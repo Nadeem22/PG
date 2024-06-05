@@ -8,3 +8,29 @@ INSERT INTO [Admin-Config].dbo.parameter_maintenance
 (id, catalog_id, catalog_name, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
 VALUES 
 ('1', '1001', 'CatalogName1', 1, 'Creator1', GETDATE(), 'Modifier1', GETDATE(), 'MarketCode1');
+===================================================================================================================
+-- Delete existing records with specified catalog_id
+DELETE FROM [Admin-Config].dbo.parameter_maintenance
+WHERE catalog_id IN ('10004', '10005', '10001', '10003');
+
+-- Insert new records with unique UUIDs
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, catalog_name, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10004', 'Product TR Approval Threshold', 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, catalog_name, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10005', 'SAMPLE TR Approval Threshold', 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, catalog_name, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10001', 'Product CR Approval Threshold', 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, catalog_name, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10003', 'SAMPLE CR Approval Threshold', 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+=======================================================================================================================
