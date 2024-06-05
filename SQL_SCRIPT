@@ -34,3 +34,47 @@ INSERT INTO [Admin-Config].dbo.parameter_maintenance
 VALUES 
 (NEWID(), '10003', 'SAMPLE CR Approval Threshold', 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
 =======================================================================================================================
+-- Delete existing records with specified catalog_id
+DELETE FROM [Admin-Config].dbo.parameter_maintenance
+WHERE catalog_id IN ('10002', '10003', '10004', '10005');
+
+-- Insert new records with unique UUIDs
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10004', 'Store Manager', 'value1', 'type1', 'regex1', 1, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10004', 'CCO stewardship', 'value2', 'type2', 'regex2', 2, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10005', 'Store Manager', 'value3', 'type3', 'regex3', 3, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10005', 'CCO stewardship', 'value4', 'type4', 'regex4', 4, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10002', 'Store Manager', 'value5', 'type5', 'regex5', 5, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10002', 'CCO stewardship', 'value6', 'type6', 'regex6', 6, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10003', 'Store Manager', 'value7', 'type7', 'regex7', 7, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
+
+INSERT INTO [Admin-Config].dbo.parameter_maintenance
+(id, catalog_id, name, parameter_value, parameter_type, regex, display_order, is_active, created_by, created_date, last_modified_by, last_modified_date, market_code)
+VALUES 
+(NEWID(), '10003', 'CCO stewardship', 'value8', 'type8', 'regex8', 8, 1, 'admin', GETDATE(), 'admin', GETDATE(), 'jp');
