@@ -1,0 +1,9 @@
+Optional.ofNullable(productType)
+            .filter(ProductType.PRODUCT::equals)
+            .ifPresent(pt -> {
+                if (requestType == RequestType.TR) {
+                    cssParameterRequest.setCatalog(ParameterCatalogType.SAMPLE_TR_CATALOG_ID.getCode());
+                } else {
+                    cssParameterRequest.setCatalog(ParameterCatalogType.PRODUCT_CATALOG_ID.getCode());
+                }
+            });
