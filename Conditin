@@ -7,3 +7,34 @@ Optional.ofNullable(productType)
                     cssParameterRequest.setCatalog(ParameterCatalogType.PRODUCT_CATALOG_ID.getCode());
                 }
             });
+
+
+flowchart TD
+    A[Customer Returns Bottles]:::event
+    B[Store Records Return]:::process
+    C[Event Created]:::event
+    D[(Inventory Service Updates Store Inventory in DB)]:::database
+    E{Store Decides to Return Bottles to Warehouse}:::decision
+    F[Store Manager Approval]:::process
+    G[Store Returns Bottles to Warehouse]:::process
+    H[(Update Store Inventory for Warehouse Return in DB)]:::database
+    I[(Update Warehouse Inventory in DB)]:::database
+    J[Process Ends]:::processEnd
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E -->|Yes| F
+    E -->|No| D
+    F -->|Approved| G
+    F -->|Not Approved| D
+    G --> H
+    H --> I
+    I --> J
+
+    classDef event fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef process fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef database fill:#fb8,stroke:#333,stroke-width:2px;
+    classDef decision fill:#ff9,stroke:#333,stroke-width:2px;
+    classDef processEnd fill:#8f8,stroke:#333,stroke-width:2px;
