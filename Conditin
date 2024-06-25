@@ -130,6 +130,43 @@ flowchart LR
         J1 --> K1
         K1 --> I1
     end
+========================
+flowchart LR
+    subgraph Customer Returns Bottles to Store
+        direction LR
+        titleCustomer[ ]:::serviceTitle
+        subgraph Mottanai Service
+            direction LR
+            A1[Customer Returns Bottles]:::event
+            B1{Registered User?}:::decision
+            C1[Store Records Return]:::process
+            D1[Event Created on Service Bus]:::event
+            E1[Miracle Drops Credited to User]:::process
+            F1[No Miracle Drops Credited]:::process
+
+            A1 --> B1
+            B1 -->|Yes| C1
+            B1 -->|No| C1
+            C1 --> D1
+            B1 -->|Yes| E1
+            B1 -->|No| F1
+        end
+    end
+
+    subgraph Inventory Service
+        direction LR
+        G1[(Inventory DB: empty_bottle_inventory_product)]:::database
+        D1 --> G1
+    end
+
+    classDef event fill:#f9f,stroke:#333,stroke-width:2px,color:#fff;
+    classDef process fill:#bbf,stroke:#333,stroke-width:2px,color:#fff;
+    classDef database fill:#fb8,stroke:#333,stroke-width:2px,color:#fff;
+    classDef decision fill:#ff9,stroke:#333,stroke-width:2px,color:#fff;
+    classDef processEnd fill:#8f8,stroke:#333,stroke-width:2px,color:#fff;
+    classDef notification fill:#acf,stroke:#333,stroke-width:2px,color:#fff;
+    classDef serviceTitle fill:none,stroke:none,color:#333,font-size:16px;
+
 
     classDef event fill:#f9f,stroke:#333,stroke-width:2px;
     classDef process fill:#bbf,stroke:#333,stroke-width:2px;
