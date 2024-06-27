@@ -215,3 +215,9 @@ public class YourServiceClass {
      * @throws NullPointerException If the provided LocationStorageEmptyBottle is null.
      * @throws Exception If there is an error while adding the empty bottle information.
      */
+===============================================================================================
+INSERT INTO location_storage_empty_bottle (id, counter_id, qty, created_by, created_date, last_modified_by, last_modified_date)
+VALUES 
+('1', 'counter1', 100, 'creator1', '2024-06-27T12:00:00Z', 'modifier1', '2024-06-27T12:00:00Z'),
+('2', 'counter2', 150, 'creator2', '2024-06-27T12:30:00Z', 'modifier2', '2024-06-27T12:30:00Z');
+
