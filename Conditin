@@ -206,3 +206,12 @@ public class YourServiceClass {
     }
 }
 ================================================================================================
+ /**
+     * Adds empty bottle information to the provided list of ProductTypeNumberDTO.
+     *
+     * @param items The list of ProductTypeNumberDTO to which the empty bottle information will be added.
+     * @param locationStorageEmptyBottle The LocationStorageEmptyBottle containing the empty bottle details.
+     * @return The updated list of ProductTypeNumberDTO.
+     * @throws NullPointerException If the provided LocationStorageEmptyBottle is null.
+     * @throws Exception If there is an error while adding the empty bottle information.
+     */
