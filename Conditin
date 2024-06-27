@@ -175,3 +175,34 @@ flowchart LR
     classDef processEnd fill:#8f8,stroke:#333,stroke-width:2px;
     classDef notification fill:#acf,stroke:#333,stroke-width:2px;
 
+=====================================================================
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class YourServiceClass {
+    private static final Logger logger = LoggerFactory.getLogger(YourServiceClass.class);
+
+    @Override
+    public List<ProductTypeNumberDTO> addEmptyBottleInfo(List<ProductTypeNumberDTO> items, LocationStorageEmptyBottle locationStorageEmptyBottle) {
+        if (locationStorageEmptyBottle == null) {
+            logger.warn("LocationStorageEmptyBottle is null, returning the original items list.");
+            return items; // or throw an exception based on your requirement
+        }
+
+        try {
+            ProductTypeNumberDTO productTypeNumberDTO = ProductTypeNumberDTO.builder()
+                .productName(InventoryConstants.PRODUCT_TYPE_DISPLAY_EMPTY_BOTTLES)
+                .productValue(InventoryConstants.PRODUCT_TYPE_DISPLAY_EMPTY_BOTTLES)
+                .productNumber(BigDecimal.valueOf(locationStorageEmptyBottle.getQty()))
+                .build();
+
+            items.add(productTypeNumberDTO);
+        } catch (Exception e) {
+            logger.error("Error while adding empty bottle info: ", e);
+            // Handle the exception or rethrow it
+        }
+
+        return items;
+    }
+}
+================================================================================================
