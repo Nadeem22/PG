@@ -220,4 +220,20 @@ INSERT INTO location_storage_empty_bottle (id, counter_id, qty, created_by, crea
 VALUES 
 ('1', 'counter1', 100, 'creator1', '2024-06-27T12:00:00Z', 'modifier1', '2024-06-27T12:00:00Z'),
 ('2', 'counter2', 150, 'creator2', '2024-06-27T12:30:00Z', 'modifier2', '2024-06-27T12:30:00Z');
+===================================================================================================
+@Override
+public LocationStorageEmptyBottle getEmptyBottleByCounterId(String counterId) {
+    LocationStorageEmptyBottle locationStorageEmptyBottle = new LocationStorageEmptyBottle();
+    try {
+        locationStorageEmptyBottle = locationStorageEmptyBottleService.getEmptyBottleDetails(counterId);
+    } catch (CustomNotFoundException e) {
+        // Log the custom exception message
+        log.warn("Counter ID {} not found: {}", counterId, e.getMessage());
+    } catch (Exception e) {
+        // Log any other unexpected exceptions
+        log.error("An unexpected error occurred while retrieving empty bottle details for Counter ID {}: {}", counterId, e.getMessage());
+    }
+    return locationStorageEmptyBottle;
+}
+
 
