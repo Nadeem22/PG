@@ -302,3 +302,23 @@ public class LocationStorageEmptyBottelController {
     }
 }
 =====================================================
+public class CustomProductResponse extends ProductResponse {
+    private EmptyBottelsDetails emptyBootelDetails;
+
+    // Getters and Setters for emptyBootelDetails
+    public EmptyBottelsDetails getEmptyBootelDetails() {
+        return emptyBootelDetails;
+    }
+
+    public void setEmptyBootelDetails(EmptyBottelsDetails emptyBootelDetails) {
+        this.emptyBootelDetails = emptyBootelDetails;
+    }
+}
+====================================================
+public CustomProductResponse getProductPageResponse() {
+    CustomProductResponse response = new CustomProductResponse();
+    response.setData(inventoryProductMapper.toDto(responsePageDTO.getItems()));
+    response.setEmptyBootelDetails(responsePageDTO.getEmptyBottelDetails());
+    return response;
+}
+=============================================
