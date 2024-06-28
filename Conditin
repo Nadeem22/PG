@@ -250,3 +250,55 @@ public LocationStorageEmptyBottle getEmptyBottleByCounterId(String counterId) {
      * @return a LocationStorageEmptyBottle object containing the details of the empty bottle,
      *         or an empty LocationStorageEmptyBottle object if the counter ID is not found or an error occurs.
      */
+==================================================================================================================
+import java.time.ZonedDateTime;
+
+public class LocationStorageEmptyBottelDTO {
+    private String id;
+    private String marketCode;
+    private String counterId;
+    private Integer qty;
+    private String createdBy;
+    private ZonedDateTime createdDate;
+    private String lastModifiedBy;
+    private ZonedDateTime lastModifiedDate;
+
+    // Getters and Setters
+}
+============================================
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
+
+@Mapper
+public interface LocationStorageEmptyBottelMapper {
+    LocationStorageEmptyBottelMapper INSTANCE = Mappers.getMapper(LocationStorageEmptyBottelMapper.class);
+
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "marketCode", target = "marketCode")
+    @Mapping(source = "counterId", target = "counterId")
+    @Mapping(source = "qty", target = "qty")
+    @Mapping(source = "createdBy", target = "createdBy")
+    @Mapping(source = "createdDate", target = "createdDate")
+    @Mapping(source = "lastModifiedBy", target = "lastModifiedBy")
+    @Mapping(source = "lastModifiedDate", target = "lastModifiedDate")
+    LocationStorageEmptyBottelDTO toDto(LocationStorageEmptyBottel entity);
+}
+=================================================================
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class LocationStorageEmptyBottelController {
+
+    @Autowired
+    private LocationStorageEmptyBottelService service;
+
+    @GetMapping("/locationStorageEmptyBottel/{id}")
+    public LocationStorageEmptyBottelDTO getLocationStorageEmptyBottel(@PathVariable String id) {
+        return service.getLocationStorageEmptyBottel(id);
+    }
+}
+=====================================================
