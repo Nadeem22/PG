@@ -236,4 +236,17 @@ public LocationStorageEmptyBottle getEmptyBottleByCounterId(String counterId) {
     return locationStorageEmptyBottle;
 }
 
-
+===============================================================================
+/**
+     * Retrieves the details of an empty bottle by counter ID.
+     * <p>
+     * This method attempts to fetch the empty bottle details from the database
+     * using the provided counter ID. If the counter ID is not found, a warning is logged,
+     * and an empty LocationStorageEmptyBottle object is returned. If an unexpected error occurs,
+     * it is logged as an error.
+     * </p>
+     *
+     * @param counterId the ID of the counter for which the empty bottle details are to be retrieved.
+     * @return a LocationStorageEmptyBottle object containing the details of the empty bottle,
+     *         or an empty LocationStorageEmptyBottle object if the counter ID is not found or an error occurs.
+     */
