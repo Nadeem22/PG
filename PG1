@@ -1,0 +1,103 @@
+If you are looking for a simpler and faster solution to bypass the SSL certificate validation, you can configure your application to trust all SSL certificates. This is generally not recommended for production environments due to security risks, but it can be useful for testing and development purposes.
+
+Here's how you can configure your Java application to trust all SSL certificates:
+
+Option 1: Configure the JDBC URL
+You can modify your JDBC URL to use the trustServerCertificate=true option, which will bypass the SSL certificate validation:
+
+java
+Copy code
+String url = "jdbc:sqlserver://your_mssql_server:port;databaseName=your_db;encrypt=true;trustServerCertificate=true";
+Option 2: Disable SSL Verification Programmatically
+You can also disable SSL verification programmatically in your Java application by creating a custom TrustManager that trusts all certificates. Here’s an example:
+
+java
+Copy code
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
+
+public class MSSQLConnection {
+    public static void main(String[] args) {
+        try {
+            // Set up a TrustManager that trusts all certificates
+            TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                    }
+
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                    }
+                }
+            };
+
+            // Set up the SSL context to use the TrustManager
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            SSLContext.setDefault(sc);
+
+            // JDBC URL with SSL encryption enabled
+            String url = "jdbc:sqlserver://your_mssql_server:port;databaseName=your_db;encrypt=true;trustServerCertificate=true";
+
+            // Connect to the database
+            Connection connection = DriverManager.getConnection(url, "your_username", "your_password");
+
+            // Your database operations here
+
+            // Close the connection
+            connection.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+Important Notes
+Security Risk: Disabling SSL verification reduces the security of your application as it becomes vulnerable to man-in-the-middle attacks. Use this approach only in non-production environments.
+For Testing Only: This approach should only be used for testing and development purposes. In production, you should always validate SSL certificates to ensure secure communication.
+By using either of these methods, you can bypass SSL certificate validation and connect to your MSSQL database more easily.
+
+I am using spriiing. Boot appli atikn yml file how I set the property to true
+ChatGPT
+In a Spring Boot application, you can configure the database connection properties, including SSL settings, in the application.yml file. To bypass SSL certificate validation, you can add the trustServerCertificate=true property in the JDBC URL.
+
+Here is an example of how to configure your application.yml to include this property:
+
+yaml
+Copy code
+spring:
+  datasource:
+    url: jdbc:sqlserver://your_mssql_server:port;databaseName=your_db;encrypt=true;trustServerCertificate=true
+    username: your_username
+    password: your_password
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+Steps:
+Open your application.yml file.
+Add the spring.datasource.url property with your JDBC URL, including the trustServerCertificate=true parameter.
+Add your database username and password.
+Specify the driver-class-name for the SQL Server driver.
+Example:
+yaml
+Copy code
+spring:
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=mydatabase;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: mypassword
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+This configuration will connect to the MSSQL database server, bypassing the SSL certificate validation. Make sure to replace localhost, 1433, mydatabase, sa, and mypassword with your actual database server's address, port, database name, username, and password.
+
+This approach is straightforward and keeps the configuration within the application.yml file, making it easy to manage.
