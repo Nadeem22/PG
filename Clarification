@@ -77,3 +77,30 @@ INSERT INTO dbo.product_property_category (
     '2023-08-20 12:00:00 +00:00', 
     'IN'
 );
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class MyTest {
+
+    @Test
+    @Order(1)
+    public void testA() {
+        // This will run first
+    }
+
+    @Test
+    @Order(2)
+    public void testB() {
+        // This will run second
+    }
+
+    @Test
+    @Order(3)
+    public void testC() {
+        // This will run third
+    }
+}
+
