@@ -1,3 +1,80 @@
 Subject: Request for Confirmation of Project Assignment and Clarification on Bench StatusDear [Manager's Name],I hope this email finds you well.I am writing to seek clarification regarding my current assignment status. As of 16th July 2024, I received a communication indicating that I have been released from my previous project and placed in the bench pool. Following this, I have also received instructions to provide daily updates on the assigned courses as per the bench policy.However, during our recent conversation on Teams, you mentioned that I should start working on the P&G HK/TW project. Given that I am officially still on the bench, I am currently in a state of uncertainty regarding my role and responsibilities.To resolve this situation and ensure proper coordination, I kindly request you to send an email to [Bench Manager's Name] clarifying my reassignment to the P&G HK/TW project. This will confirm that I should focus on my new project tasks and ignore the bench-related communications.Your prompt assistance in providing proper allocation in the P&G HK/TW project would be greatly appreciated, as it will help streamline my responsibilities and avoid any potential conflicts.Thank you for your support and understanding.Best regards,Mohammad Nadeem
 [Your Employee ID]
 [Your Contact Information]
+INSERT INTO dbo.product_property_category (
+    id, 
+    code, 
+    name, 
+    property_value, 
+    property_type, 
+    is_active, 
+    created_by, 
+    created_date, 
+    last_modified_by, 
+    last_modified_date, 
+    market_code
+) VALUES (
+    '123e4567-e89b-12d3-a456-426614174000', 
+    'C001', 
+    'Category Name 1', 
+    'Value 1', 
+    1, 
+    1, 
+    'user1', 
+    '2023-08-20 10:00:00 +00:00', 
+    'user1', 
+    '2023-08-20 10:00:00 +00:00', 
+    'US'
+);
+
+INSERT INTO dbo.product_property_category (
+    id, 
+    code, 
+    name, 
+    property_value, 
+    property_type, 
+    is_active, 
+    created_by, 
+    created_date, 
+    last_modified_by, 
+    last_modified_date, 
+    market_code
+) VALUES (
+    '223e4567-e89b-12d3-a456-426614174001', 
+    'C002', 
+    'Category Name 2', 
+    'Value 2', 
+    2, 
+    1, 
+    'user2', 
+    '2023-08-20 11:00:00 +00:00', 
+    'user2', 
+    '2023-08-20 11:00:00 +00:00', 
+    'JP'
+);
+
+INSERT INTO dbo.product_property_category (
+    id, 
+    code, 
+    name, 
+    property_value, 
+    property_type, 
+    is_active, 
+    created_by, 
+    created_date, 
+    last_modified_by, 
+    last_modified_date, 
+    market_code
+) VALUES (
+    '323e4567-e89b-12d3-a456-426614174002', 
+    'C003', 
+    'Category Name 3', 
+    'Value 3', 
+    3, 
+    1, 
+    'user3', 
+    '2023-08-20 12:00:00 +00:00', 
+    'user3', 
+    '2023-08-20 12:00:00 +00:00', 
+    'IN'
+);
