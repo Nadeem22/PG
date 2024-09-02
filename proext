@@ -1,0 +1,53 @@
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Properties;
+
+public class PropertiesToExcel {
+
+    public static void main(String[] args) {
+        // Specify the path to the properties file
+        String propertiesFilePath = "example.properties"; // Change this to your file path
+
+        // Load properties from the file
+        Properties properties = new Properties();
+        try (FileInputStream inputStream = new FileInputStream(propertiesFilePath)) {
+            properties.load(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        // Create an Excel workbook and sheet
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Sheet1");
+
+        int rowNum = 0;
+        for (String key : properties.stringPropertyNames()) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(key);
+            row.createCell(1).setCellValue(properties.getProperty(key));
+        }
+
+        // Write the Excel file
+        String excelFileName = propertiesFilePath.replace(".properties", ".xlsx");
+        try (FileOutputStream outputStream = new FileOutputStream(excelFileName)) {
+            workbook.write(outputStream);
+            System.out.println("Excel file created: " + excelFileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Close the workbook
+        try {
+            workbook.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
