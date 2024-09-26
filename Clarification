@@ -104,3 +104,67 @@ public class MyTest {
     }
 }
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.ZonedDateTime;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+public class YourClassTest {
+
+    private YourClass yourClass;
+
+    @BeforeEach
+    void setUp() {
+        yourClass = new YourClass();
+        // If your method depends on any services or configurations, mock them here
+    }
+
+    @Test
+    void testIsAfterInboundSwitchDate_WithFutureDate() {
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime futureDate = now.plusDays(10);
+        String marketCode = "US";
+
+        boolean result = yourClass.isAfterInboundSwitchDate(futureDate, marketCode);
+        assertTrue(result, "Expected future date to be after the inbound switch date");
+    }
+
+    @Test
+    void testIsAfterInboundSwitchDate_WithPastDate() {
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime pastDate = now.minusDays(10);
+        String marketCode = "US";
+
+        boolean result = yourClass.isAfterInboundSwitchDate(pastDate, marketCode);
+        assertFalse(result, "Expected past date to not be after the inbound switch date");
+    }
+
+    @Test
+    void testIsAfterInboundSwitchDate_WithCurrentDate() {
+        ZonedDateTime now = ZonedDateTime.now();
+        String marketCode = "US";
+
+        boolean result = yourClass.isAfterInboundSwitchDate(now, marketCode);
+        // The expected result might depend on how precisely the switch date is defined.
+        // Assuming the switch date does not include the current date
+        assertFalse(result, "Expected the current date to not be after the inbound switch date");
+    }
+
+    @Test
+    void testIsAfterInboundSwitchDate_WithNullDate() {
+        String marketCode = "US";
+
+        Exception exception = assertThrows(NullPointerException.class, () -> {
+            yourClass.isAfterInboundSwitchDate(null, marketCode);
+        });
+
+        String expectedMessage = "Target date must not be null";
+        String actualMessage = exception.getMessage();
+
+        assertTrue(actualMessage.contains(expectedMessage));
+    }
+
+    // You might also want to test with different market codes if they affect the logic
+}
