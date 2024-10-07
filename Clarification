@@ -168,3 +168,15 @@ public class YourClassTest {
 
     // You might also want to test with different market codes if they affect the logic
 }
+// Filtering out non-duplicates (keeping only duplicates)
+    Map<Long, Long> duplicates = itemCounts.entrySet().stream()
+                                           .filter(entry -> entry.getValue() > 1)
+                                           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    // Printing out duplicates
+    if (duplicates.isEmpty()) {
+        System.out.println("No duplicates found.");
+    } else {
+        System.out.println("Duplicate NewAuditItemIds found:");
+        duplicates.forEach((id, count) -> System.out.println("NewAuditItemId: " + id + ", Count: " + count));
+    }
