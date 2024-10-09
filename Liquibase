@@ -1,0 +1,70 @@
+To add a new column basket_level_discount to the transaction_order table in the Transaction_FE database using Liquibase with the XML method, follow these steps:
+
+Step 1: Create a New Liquibase ChangeSet XML File
+
+1. In your Liquibase db/changelog folder (or your Liquibase changelog directory), create a new XML file, for example: add-basket-level-discount.xml.
+
+
+2. Inside this XML file, add the following content to create a new ChangeSet that adds the column:
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add a new column to the transaction_order table -->
+    <changeSet id="2024-10-09-01" author="yourname">
+        <addColumn tableName="transaction_order">
+            <column name="basket_level_discount" type="DECIMAL(10,2)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
+
+id: A unique identifier for this ChangeSet (you can use any format, but I used the date and a sequence number).
+
+author: Replace yourname with your actual name or an identifier.
+
+tableName: Specify the table where the column will be added (transaction_order).
+
+column: Specify the new column name basket_level_discount and set the type as DECIMAL(10,2) or any other type you need.
+
+nullable="true" allows null values in this column.
+
+
+Step 2: Update master.xml
+
+1. In your main master.xml file (usually located in the db/changelog directory), add a reference to this new ChangeSet:
+
+
+
+<include file="db/changelog/add-basket-level-discount.xml" relativeToChangelogFile="false"/>
+
+This includes the new ChangeSet file in your main changelog.
+
+Step 3: Run Liquibase Update
+
+1. Ensure that your Spring Boot application is properly configured to use Liquibase. You should have the necessary Liquibase properties in your application.yml or application.properties file, pointing to your MSSQL database.
+
+
+2. To apply the changes, run the Spring Boot application. Liquibase will automatically execute the new ChangeSet and add the basket_level_discount column to the transaction_order table.
+
+
+
+Step 4: Verify the Changes
+
+1. After the application starts and the migration runs, check the database to verify that the basket_level_discount column has been added to the transaction_order table.
+
+
+
+You can also check the Liquibase DATABASECHANGELOG table to see that the ChangeSet has been applied successfully.
+
+Let me know if you need any further clarifications or steps!
+
