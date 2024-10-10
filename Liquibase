@@ -68,3 +68,42 @@ You can also check the Liquibase DATABASECHANGELOG table to see that the ChangeS
 
 Let me know if you need any further clarifications or steps!
 
+==========================
+To modify the file and remove the logic related to adding the draft and the constraint logic, leaving only your requirement of adding the basket_level_discount column, follow this simplified version of the XML file:
+
+Modified Liquibase File:
+
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- New ChangeSet to add basket_level_discount column to transaction_order table -->
+    <changeSet id="2024-10-09-001" author="yourname">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="transaction_order" columnName="basket_level_discount"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="transaction_order">
+            <column name="basket_level_discount" type="DECIMAL(10,2)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
+
+Explanation:
+
+preConditions: This ensures that the column basket_level_discount is added only if it does not already exist in the transaction_order table.
+
+addColumn: This ChangeSet will add the basket_level_discount column with type DECIMAL(10,2) and allows null values to the transaction_order table.
+
+
+This is now a simple XML file that focuses solely on adding the basket_level_discount column to the transaction_order table.
+
+Let me know if this satisfies your requirement!
+
