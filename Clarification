@@ -188,3 +188,20 @@ Thank you for your prompt attention.
 
 Best regards,
 Mohammad Nadeem
++--++±++++++++++
+<changeSet id="2024-10-15-002-insert-user-record" author="vasiliev.av">
+    <preConditions onFail="MARK_RAN">
+        <tableExists tableName="user_account_test"/>
+    </preConditions>
+
+    <insert tableName="user_account_test">
+        <column name="id" value="1"/>
+        <column name="user_name" value="john_doe"/>
+        <column name="tnumber" value="TN123456"/>
+        <column name="market_code" value="US"/>
+        <column name="created_by" value="admin"/>
+        <column name="created_date" value="2024-10-15T10:00:00"/>
+        <column name="last_modified_by" value="admin"/>
+        <column name="last_modified_date" value="2024-10-15T10:00:00"/>
+    </insert>
+</changeSet>
