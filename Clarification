@@ -205,3 +205,38 @@ Mohammad Nadeem
         <column name="last_modified_date" value="2024-10-15T10:00:00"/>
     </insert>
 </changeSet>
+===={{
+private TransactionEntity mapToTransactionEntity(String transactionData) {
+    // Parse the transaction data into the TransactionModel object
+    TransactionModel model = JsonObjectUtil.parseTransactionModel(transactionData);
+
+    // Initialize the TransactionEntity object from the model
+    TransactionEntity entity = transactionEntityModelMapper.modelToEntity(
+        new TransactionEntity(), model
+    );
+
+    // Extract extension data map from the model
+    Map<String, String> extensionData = model.getExtensionData();
+
+    // Check if the extension data contains the BASKET_LEVEL_DISCOUNT field
+    if (extensionData != null && extensionData.containsKey("BASKET_LEVEL_DISCOUNT")) {
+        try {
+            // Parse the discount value from String to Integer (or Double if needed)
+            int basketLevelDiscount = Integer.parseInt(extensionData.get("BASKET_LEVEL_DISCOUNT"));
+
+            // Set the discount value in the TransactionEntity object
+            entity.setBasketLevelDiscount(basketLevelDiscount);
+        } catch (NumberFormatException e) {
+            // Handle invalid number format gracefully
+            System.err.println("Invalid BASKET_LEVEL_DISCOUNT value: " + extensionData.get("BASKET_LEVEL_DISCOUNT"));
+        }
+    } else {
+        // Optionally log if the discount field is not present
+        System.out.println("BASKET_LEVEL_DISCOUNT not found in extension data.");
+    }
+
+    // Set additional properties if required
+    entity.setMarketCode(marketCodeComponent.getMarketCode());
+
+    return entity;
+}
