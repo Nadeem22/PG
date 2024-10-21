@@ -101,3 +101,6 @@ spring:
 This configuration will connect to the MSSQL database server, bypassing the SSL certificate validation. Make sure to replace localhost, 1433, mydatabase, sa, and mypassword with your actual database server's address, port, database name, username, and password.
 
 This approach is straightforward and keeps the configuration within the application.yml file, making it easy to manage.
+The Job_MainCounterJob is a scheduled job that runs monthly to determine the primary counter (store) for each customer. The primary counter is calculated based on the total purchase amount and the number of visits by the customer at each counter during the month. The counter with the highest counter rate (a combination of purchase value and visit frequency) is set as the main counter for the customer, stored under the field VIP_PROFILE_FULL.COUNTER_ID.
+
+If the current main counter is closed, the system will automatically assign the next highest counter from the ranked list of counters based on the counter rate. This job ensures that each customer is always associated with the most relevant counter for their shopping behavior, providing more targeted service and operational efficiency.
