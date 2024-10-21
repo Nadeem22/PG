@@ -342,3 +342,25 @@ The dictionaries storing purchase amounts, visit counts, and main counter data a
 The job logs the end time and completes the execution.
 Quarterly Execution:
 The job is configured to run quarterly on the 20th of January, April, July, and October at 00:12 SGT to ensure regular updates of the customer-counter relationships.
+
+==============================
+2. Assumptions and Constraints
+Data Accuracy and Availability:
+
+All transaction data in the TRA_TRANSACTION table and counter information in the SEC_COUNTER table are accurate and accessible.
+VIP profile information in the VIP_PROFILE_FULL and VIP_CONSUMER_SUMMARY tables is up-to-date at the time of job execution.
+Database Access:
+
+The job has uninterrupted access to the required database and tables during execution.
+Connection to the database is stable, and proper credentials are configured.
+Cron Job Execution:
+
+The cron job runs exactly on the scheduled dates and times (20th of January, April, July, and October at 00:12 SGT).
+Any delays or disruptions in job execution will require manual intervention or rescheduling.
+Transaction Constraints:
+
+Only valid transactions (with TRANSACTION_TYPE = 0) are considered for calculating purchase amounts and visit counts.
+Pre-sales transactions are excluded from the calculation.
+Counter Closure Handling:
+
+If the calculated main counter is closed, the system must successfully find and assign a valid open counter from the same market.
