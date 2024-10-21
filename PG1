@@ -309,3 +309,36 @@ graph TD
     end
 
     N[Monthly Execution at 00:12 SGT] --> B
+===================================
+5.2 Flow of Execution
+The MainCounterJob executes quarterly to determine the most relevant main counter for each customer based on their purchases and visit frequency. Below is the detailed step-by-step flow of execution:
+
+Job Trigger and Initialization:
+The job is triggered quarterly (January 20th, April 20th, July 20th, and October 20th) based on the scheduler configuration.
+The job logs the start time and initializes required data structures to store purchase amounts, visit counts, and main counter assignments.
+Resetting AM Status:
+The job first resets the AM status for all customers by setting it to 0 in the VIP_PROFILE_FULL table to ensure a clean state before calculations.
+Fetching Data from the Database:
+Purchase amounts for each VIP at different counters over the past 12 months are retrieved from the TRA_TRANSACTION table, considering only valid transactions (excluding pre-sales).
+Visit counts are also fetched from the same table, counting only the first valid visit per day to prevent multiple counts from the same day.
+Calculating Counter Rates:
+For each VIP, the purchase amount and visit counts for all visited counters are used to calculate the counter rate with the following formula:
+scss
+Copy code
+Counter Rate = 0.6 * (counterVisits / totalVisits) + 0.4 * (counterAmount / totalAmount)
+The counter with the highest rate is selected as the main counter.
+Updating the Main Counter:
+The VIP_PROFILE_FULL table is updated with the calculated main counter for each VIP, reflecting the new assignment.
+Handling Closed Counters:
+If the newly assigned main counter is closed, the job selects the next available counter from the same market that is not closed.
+This ensures that every VIP is assigned a valid main counter, even if the original one becomes unavailable.
+Logging and Monitoring:
+The job logs all activities, including:
+The start and end of major operations.
+Any errors encountered during execution.
+Errors are logged, and exceptions are thrown for further troubleshooting if necessary.
+Cleanup and End:
+The dictionaries storing purchase amounts, visit counts, and main counter data are cleared after processing to release memory.
+The job logs the end time and completes the execution.
+Quarterly Execution:
+The job is configured to run quarterly on the 20th of January, April, July, and October at 00:12 SGT to ensure regular updates of the customer-counter relationships.
