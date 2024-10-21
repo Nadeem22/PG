@@ -104,3 +104,45 @@ This approach is straightforward and keeps the configuration within the applicat
 The Job_MainCounterJob is a scheduled job that runs monthly to determine the primary counter (store) for each customer. The primary counter is calculated based on the total purchase amount and the number of visits by the customer at each counter during the month. The counter with the highest counter rate (a combination of purchase value and visit frequency) is set as the main counter for the customer, stored under the field VIP_PROFILE_FULL.COUNTER_ID.
 
 If the current main counter is closed, the system will automatically assign the next highest counter from the ranked list of counters based on the counter rate. This job ensures that each customer is always associated with the most relevant counter for their shopping behavior, providing more targeted service and operational efficiency.
+2. Scope of the Task
+
+The scope of the Job_MainCounterJob involves maintaining accurate and relevant customer-counter relationships by periodically evaluating customer activity across multiple counters (stores). This ensures that customers are associated with the most appropriate main counter based on their behavior and shopping patterns. Below are the key objectives:
+
+1. Calculation of Counter Rates:
+
+The job calculates the counter rate for each customer by analyzing the total purchase amount and the number of visits to each counter during the month.
+
+
+
+2. Assigning the Main Counter:
+
+The counter with the highest counter rate is assigned as the main counter for the customer, updating the field VIP_PROFILE_FULL.COUNTER_ID.
+
+
+
+3. Handling Counter Closures:
+
+If the current main counter is closed or unavailable, the customer will be reassigned to the next most relevant counter in the ranked list, based on counter rates.
+
+
+
+4. Monthly Execution:
+
+This job runs automatically at the end of each month, ensuring that counter assignments reflect the latest customer behavior and shopping patterns.
+
+
+
+5. Error Handling and Logging:
+
+The job logs all activities and errors encountered during execution to ensure traceability and facilitate troubleshooting.
+
+
+
+6. Impact on Operations:
+
+The updated main counter will influence various customer services and targeted operations, ensuring the business can offer a seamless and personalized experience.
+
+
+
+
+This task ensures that each customer's main counter assignment is regularly reviewed and adjusted to reflect their latest behavior, thereby improving the efficiency of store operations and customer service.
