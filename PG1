@@ -281,3 +281,31 @@ graph TD
     subgraph Scheduler
         N[Monthly Execution (00:12 SGT)] --> B
     end
+#######
+graph TD
+    A[TRA_Transaction Table] -->|Retrieve Purchase Data| B{Job_MainCounterJob}
+    C[VIP Consumer Summary] -->|Retrieve Visit Data| B
+    D[Sec_Counter Table] -->|Retrieve Counter Information| B
+
+    subgraph Calculation
+        B --> E[Calculate Purchase Amount per Counter]
+        B --> F[Calculate Number of Visits per Counter]
+        B --> G[Compute Counter Rate]
+    end
+
+    G --> H[Select Main Counter with Highest Rate]
+
+    subgraph Counter Assignment
+        H --> I{Is Main Counter Available?}
+        I -- Yes --> J[Assign Main Counter]
+        I -- No --> K[Select Next Highest Counter]
+    end
+
+    J --> L[Update VIP_PROFILE_FULL.COUNTER_ID]
+    K --> L
+
+    subgraph Logging and Monitoring
+        B --> M[Log Execution Status and Errors]
+    end
+
+    N[Monthly Execution at 00:12 SGT] --> B
