@@ -146,3 +146,76 @@ The updated main counter will influence various customer services and targeted o
 
 
 This task ensures that each customer's main counter assignment is regularly reviewed and adjusted to reflect their latest behavior, thereby improving the efficiency of store operations and customer service.
+==============
+
+The Job_MainCounterJob is designed to calculate the counter rate for customers and update the main counter based on their purchasing behavior and visit frequency over the past 12 months. Below are the detailed functional requirements:
+
+1. Calculate Purchase Amount per Counter:
+
+The job retrieves and calculates the total purchase amount for each customer at different counters over the last 12 months.
+
+
+
+2. Calculate Number of Visits per Counter:
+
+The job also determines the number of transactions or visits made by each customer at each counter during the same 12-month period.
+
+
+
+3. Calculate Counter Rate:
+
+The counter rate is computed for each counter using the following formula:
+
+Counter Rate = (0.6 * (counterVisits / totalVisits)) + (0.4 * (counterAmount / totalAmount))
+
+This formula gives 60% weight to the number of visits and 40% weight to the purchase amount to determine the most relevant counter.
+
+
+
+4. Update Main Counter:
+
+The counter with the highest rate will be assigned as the main counter for the customer and stored in the VIP_PROFILE_FULL.COUNTER_ID field.
+
+
+
+5. Handle Counter Closures:
+
+If the assigned main counter is closed, the system will assign the next highest-rated counter from the list to ensure continuity of service.
+
+
+
+6. Monthly Execution:
+
+The job is scheduled to run monthly at 00:12 SGT, ensuring that the main counter assignments are regularly updated based on the most recent customer behavior.
+
+
+
+7. Data Handling and Storage:
+
+The job interacts with the following key tables:
+
+TRA_Transaction Table: Stores purchase and transaction data.
+
+VIP_PROFILE_FULL Table: Maintains the current main counter.
+
+VIP Consumer Summary: Contains statistical data for customers.
+
+Sec_Counter Table: Stores information about the counters.
+
+
+
+
+8. Logging and Monitoring:
+
+The job logs the execution status, any errors, and updates for auditing and troubleshooting purposes.
+
+
+
+9. Example Logic:
+
+If a customer has purchased $50 on Counter A and $150 on Counter B, and visited Counter A 30 times and Counter B once in the last 12 months:
+
+Counter A Rate = (0.6 * 30/31) + (0.4 * 50/200) = 0.68
+Counter B Rate = (0.6 * 1/31) + (0.4 * 150/200) = 0.32
+
+In this case, Counter A will be set as the main counter.
