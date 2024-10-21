@@ -219,3 +219,6 @@ Counter A Rate = (0.6 * 30/31) + (0.4 * 50/200) = 0.68
 Counter B Rate = (0.6 * 1/31) + (0.4 * 150/200) = 0.32
 
 In this case, Counter A will be set as the main counter.
+=============
+    C -->|Two| E[iPhone]
+
