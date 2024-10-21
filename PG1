@@ -220,5 +220,34 @@ Counter B Rate = (0.6 * 1/31) + (0.4 * 150/200) = 0.32
 
 In this case, Counter A will be set as the main counter.
 =============
-    C -->|Two| E[iPhone]
+    graph TD
+    A[TRA_Transaction Table] -->|Retrieve Purchase Data| B{Job_MainCounterJob}
+    C[VIP Consumer Summary] -->|Retrieve Visit Data| B
+    D[Sec_Counter Table] -->|Retrieve Counter Info| B
+
+    subgraph Calculation
+        B --> E[Calculate Purchase Amount per Counter]
+        B --> F[Calculate Number of Visits per Counter]
+        B --> G[Calculate Counter Rate]
+    end
+
+    G -->|Formula: 0.6 * (counterVisits / totalVisits) + 0.4 * (counterAmount / totalAmount)| H[Select Main Counter]
+
+    subgraph Counter Assignment
+        H --> I[VIP_PROFILE_FULL.COUNTER_ID]
+        I -->|Update Main Counter| J{Is Main Counter Open?}
+        J -- Yes --> K[Assign Main Counter]
+        J -- No --> L[Select Next Counter by Rate]
+    end
+
+    K --> M[Save to VIP_PROFILE_FULL Table]
+    L --> M
+
+    subgraph Logging and Monitoring
+        B --> N[Log Execution Status and Errors]
+    end
+
+    subgraph Scheduler
+        O[Monthly Execution (00:12 SGT)] --> B
+    end
 
