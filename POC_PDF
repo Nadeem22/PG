@@ -130,3 +130,36 @@ WHERE
     AND CAST(T.purchase_date AS DATE) <= CAST(GETDATE() AS DATE)
 GROUP BY 
     T.member_id, T.counter_id;
+SELECT 
+    T.member_id,
+    T.counter_id,
+    SUM(T.transaction_retail_amount) AS TRANSACTION_AMOUNT
+FROM 
+    transaction_order T
+INNER JOIN 
+    counter C ON C.id = T.counter_id AND C.counter_state = 'Normal'
+-- Join with transaction_property_item for TRANSACTION_HAS_PRODUCT, TRANSACTION_HAS_PURCHASE, and TRANSACTION_HAS_RETURN
+INNER JOIN 
+    transaction_property_item PI_PRODUCT 
+    ON PI_PRODUCT.transaction_id = T.transaction_order_id 
+    AND PI_PRODUCT.cr_key = 'TRANSACTION_HAS_PRODUCT' 
+    AND PI_PRODUCT.cr_value = 1
+INNER JOIN 
+    transaction_property_item PI_PURCHASE 
+    ON PI_PURCHASE.transaction_id = T.transaction_order_id 
+    AND PI_PURCHASE.cr_key = 'TRANSACTION_HAS_PURCHASE'
+    AND PI_PURCHASE.cr_value = 1
+LEFT JOIN 
+    transaction_property_item PI_RETURN 
+    ON PI_RETURN.transaction_id = T.transaction_order_id 
+    AND PI_RETURN.cr_key = 'TRANSACTION_HAS_RETURN'
+    AND PI_RETURN.cr_value = 1
+WHERE 
+    T.TRANSACTION_TYPE = 'Normal'
+    AND (
+        PI_PURCHASE.cr_value = 1 OR PI_RETURN.cr_value = 1 -- Apply the OR condition
+    )
+    AND T.purchase_date >= DATEADD(MONTH, -12, CAST(GETDATE() AS DATE))
+    AND CAST(T.purchase_date AS DATE) <= CAST(GETDATE() AS DATE)
+GROUP BY 
+    T.member_id, T.counter_id;
