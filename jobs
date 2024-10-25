@@ -1,0 +1,54 @@
+package com.example.demo.repository;
+
+import com.example.demo.dto.VIPCounterSummaryDTO;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public interface VIPCounterSummaryRepository extends CrudRepository<VIPCounterSummaryDTO, String> {
+
+    // Native query that maps directly to the DTO
+    @Query(value = """
+        SELECT new com.example.demo.dto.VIPCounterSummaryDTO(
+            vc.VIP_ID, 
+            vc.COUNTER_ID, 
+            vc.COUNTER_VISIT_COUNT, 
+            SUM(vc.COUNTER_VISIT_COUNT) OVER (PARTITION BY vc.VIP_ID), 
+            tp.TRANSACTION_AMOUNT, 
+            SUM(tp.TRANSACTION_AMOUNT) OVER (PARTITION BY tp.VIP_ID)
+        )
+        FROM (
+            SELECT 
+                T.VIP_ID, 
+                T.COUNTER_ID, 
+                COUNT(T.PURCHASE_DATE) AS COUNTER_VISIT_COUNT
+            FROM TRA_TRANSACTION T
+            INNER JOIN SEC_COUNTER C 
+                ON C.COUNTER_ID = T.COUNTER_ID AND C.COUNTER_STATE <> 1
+            WHERE 
+                T.TRANSACTION_TYPE = 0 AND T.IS_BYCOUNTER = 1
+                AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') >= TRUNC(ADD_MONTHS(SYSDATE, -1))
+                AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') <= TRUNC(SYSDATE)
+            GROUP BY T.VIP_ID, T.COUNTER_ID
+        ) vc
+        LEFT JOIN (
+            SELECT 
+                T.VIP_ID, 
+                T.COUNTER_ID, 
+                SUM(T.TRANSACTION_RETAIL_AMOUNT) AS TRANSACTION_AMOUNT
+            FROM TRA_TRANSACTION T
+            INNER JOIN SEC_COUNTER C 
+                ON C.COUNTER_ID = T.COUNTER_ID AND C.COUNTER_STATE <> 1
+            WHERE 
+                T.TRANSACTION_TYPE = 0 AND T.TRANSACTION_HAS_PRODUCT = 1
+                AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') >= TRUNC(ADD_MONTHS(SYSDATE, -1))
+                AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') <= TRUNC(SYSDATE)
+                AND (T.TRANSACTION_HAS_PURCHASE = 1 OR T.TRANSACTION_HAS_RETURN = 1)
+            GROUP BY T.VIP_ID, T.COUNTER_ID
+        ) tp
+        ON vc.VIP_ID = tp.VIP_ID AND vc.COUNTER_ID = tp.COUNTER_ID
+    """, nativeQuery = true)
+    List<VIPCounterSummaryDTO> getVisitAndPurchaseSummary();
+}
