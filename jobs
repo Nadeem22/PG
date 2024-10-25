@@ -52,3 +52,51 @@ public interface VIPCounterSummaryRepository extends CrudRepository<VIPCounterSu
     """, nativeQuery = true)
     List<VIPCounterSummaryDTO> getVisitAndPurchaseSummary();
 }
+-- Insert combined data into the new table
+INSERT INTO VIP_COUNTER_SUMMARY (VIP_ID, COUNTER_ID, COUNT, TOTALCOUNT, AMMOUNT, TOTALAMMOUNT)
+SELECT
+    vc.VIP_ID,
+    vc.COUNTER_ID,
+    vc.COUNTER_VISIT_COUNT AS COUNT,
+    SUM(vc.COUNTER_VISIT_COUNT) OVER (PARTITION BY vc.VIP_ID) AS TOTALCOUNT,
+    tp.TRANSACTION_AMOUNT AS AMMOUNT,
+    SUM(tp.TRANSACTION_AMOUNT) OVER (PARTITION BY tp.VIP_ID) AS TOTALAMMOUNT
+FROM
+    (
+        -- Subquery to get the visit counts per VIP and counter
+        SELECT
+            T.VIP_ID,
+            T.COUNTER_ID,
+            COUNT(T.PURCHASE_DATE) AS COUNTER_VISIT_COUNT
+        FROM
+            TRA_TRANSACTION T
+        INNER JOIN
+            SEC_COUNTER C ON C.COUNTER_ID = T.COUNTER_ID AND C.COUNTER_STATE <> 1
+        WHERE
+            T.TRANSACTION_TYPE = 0 AND T.IS_BYCOUNTER = 1
+            AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') >= TRUNC(ADD_MONTHS(SYSDATE, -12))
+            AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') <= TRUNC(SYSDATE)
+        GROUP BY
+            T.VIP_ID, T.COUNTER_ID
+    ) vc
+LEFT JOIN
+    (
+        -- Subquery to get the purchase amounts per VIP and counter
+        SELECT
+            T.VIP_ID,
+            T.COUNTER_ID,
+            SUM(T.TRANSACTION_RETAIL_AMOUNT) AS TRANSACTION_AMOUNT
+        FROM
+            TRA_TRANSACTION T
+        INNER JOIN
+            SEC_COUNTER C ON C.COUNTER_ID = T.COUNTER_ID AND C.COUNTER_STATE <> 1
+        WHERE
+            T.TRANSACTION_TYPE = 0
+            AND T.TRANSACTION_HAS_PRODUCT = 1
+            AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') >= TRUNC(ADD_MONTHS(SYSDATE, -12))
+            AND TO_DATE(T.PURCHASE_DATE, 'YYYY-MM-DD') <= TRUNC(SYSDATE)
+            AND (T.TRANSACTION_HAS_PURCHASE = 1 OR T.TRANSACTION_HAS_RETURN = 1)
+        GROUP BY
+            T.VIP_ID, T.COUNTER_ID
+    ) tp
+ON vc.VIP_ID = tp.VIP_ID AND vc.COUNTER_ID = tp.COUNTER_ID;
