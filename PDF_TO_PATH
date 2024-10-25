@@ -77,3 +77,93 @@ public class EmployeeController {
         return employeeService.generateAndStoreEmployeeReport();
     }
 }
+import com.lowagie.text.*;
+import com.lowagie.text.pdf.*;
+
+import java.awt.Color;
+import java.io.FileOutputStream;
+
+public class PDFFormattingExample {
+
+    public static void main(String[] args) {
+        try {
+            // Create a Document instance
+            Document document = new Document();
+            PdfWriter.getInstance(document, new FileOutputStream("formatted_table.pdf"));
+            document.open();
+
+            // Set the font style and size
+            Font headerFont = new Font(Font.HELVETICA, 14, Font.BOLD, Color.WHITE);
+            Font bodyFont = new Font(Font.HELVETICA, 12, Font.NORMAL, Color.BLACK);
+
+            // Create a table with 3 columns
+            PdfPTable table = new PdfPTable(3);
+            table.setWidthPercentage(100); // Full width
+            table.setSpacingBefore(10f);  // Space before the table
+            table.setSpacingAfter(10f);   // Space after the table
+
+            // Set column widths (percentage of total width)
+            table.setWidths(new float[]{2f, 2f, 1f});
+
+            // Create a header cell with background color
+            PdfPCell headerCell = new PdfPCell(new Phrase("Header 1", headerFont));
+            headerCell.setBackgroundColor(Color.DARK_GRAY);
+            headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            headerCell.setPadding(10);
+            table.addCell(headerCell);
+
+            headerCell = new PdfPCell(new Phrase("Header 2", headerFont));
+            headerCell.setBackgroundColor(Color.DARK_GRAY);
+            headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            headerCell.setPadding(10);
+            table.addCell(headerCell);
+
+            headerCell = new PdfPCell(new Phrase("Header 3", headerFont));
+            headerCell.setBackgroundColor(Color.DARK_GRAY);
+            headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            headerCell.setPadding(10);
+            table.addCell(headerCell);
+
+            // Add body cells with different alignments and padding
+            PdfPCell bodyCell = new PdfPCell(new Phrase("Row 1, Col 1", bodyFont));
+            bodyCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+            bodyCell.setPadding(8);
+            table.addCell(bodyCell);
+
+            bodyCell = new PdfPCell(new Phrase("Row 1, Col 2", bodyFont));
+            bodyCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            bodyCell.setPadding(8);
+            table.addCell(bodyCell);
+
+            bodyCell = new PdfPCell(new Phrase("Row 1, Col 3", bodyFont));
+            bodyCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            bodyCell.setPadding(8);
+            table.addCell(bodyCell);
+
+            // Add another row with background color for cells
+            bodyCell = new PdfPCell(new Phrase("Row 2, Col 1", bodyFont));
+            bodyCell.setBackgroundColor(Color.LIGHT_GRAY);
+            bodyCell.setPadding(8);
+            table.addCell(bodyCell);
+
+            bodyCell = new PdfPCell(new Phrase("Row 2, Col 2", bodyFont));
+            bodyCell.setBackgroundColor(Color.LIGHT_GRAY);
+            bodyCell.setPadding(8);
+            table.addCell(bodyCell);
+
+            bodyCell = new PdfPCell(new Phrase("Row 2, Col 3", bodyFont));
+            bodyCell.setBackgroundColor(Color.LIGHT_GRAY);
+            bodyCell.setPadding(8);
+            table.addCell(bodyCell);
+
+            // Add table to document
+            document.add(table);
+
+            document.close();
+            System.out.println("PDF created successfully!");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
