@@ -27,3 +27,47 @@ public class EmployeeController {
                 .body(bis.readAllBytes());
     }
 }
+import com.lowagie.text.Document;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    @Override
+    public ByteArrayInputStream generateEmployeeReport() {
+        List<Employee> employees = employeeRepository.findAll();
+        Document document = new Document();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            document.add(new Paragraph("Employee Report"));
+            document.add(new Paragraph(" ")); // Adding a blank line
+
+            for (Employee emp : employees) {
+                document.add(new Paragraph("ID: " + emp.getId()));
+                document.add(new Paragraph("Name: " + emp.getName()));
+                document.add(new Paragraph("Department: " + emp.getDepartment()));
+                document.add(new Paragraph("Salary: $" + emp.getSalary()));
+                document.add(new Paragraph(" ")); // Adding a blank line
+            }
+
+            document.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new ByteArrayInputStream(out.toByteArray());
+    }
+}
