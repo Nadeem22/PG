@@ -76,3 +76,8 @@ import java.io.ByteArrayInputStream;
 public interface EmployeeService {
     ByteArrayInputStream generateEmployeeReport();
 }
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+}
+
