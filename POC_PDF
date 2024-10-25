@@ -109,3 +109,24 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     </dependency>
 </dependencies>
 
+SELECT 
+    T.member_id,
+    T.counter_id,
+    SUM(T.transaction_retail_amount) AS TRANSACTION_AMOUNT
+FROM 
+    transaction_order T
+INNER JOIN 
+    counter C ON C.id = T.counter_id AND C.counter_state = 'Normal'
+-- Join with transaction_property_item to check TRANSACTION_HAS_PRODUCT
+INNER JOIN 
+    transaction_property_item PI 
+    ON PI.transaction_id = T.transaction_order_id 
+    AND PI.cr_key = 'TRANSACTION_HAS_PRODUCT' 
+    AND PI.cr_value = 1
+WHERE 
+    T.TRANSACTION_TYPE = 'Normal'
+    AND (T.TRANSACTION_HAS_PURCHASE = 1 OR T.TRANSACTION_HAS_RETURN = 1)
+    AND T.purchase_date >= DATEADD(MONTH, -12, CAST(GETDATE() AS DATE))
+    AND CAST(T.purchase_date AS DATE) <= CAST(GETDATE() AS DATE)
+GROUP BY 
+    T.member_id, T.counter_id;
