@@ -476,3 +476,78 @@ class VipServiceTest {
     }
 }
 
+========================================
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+class VipCounterServiceTest {
+
+    @Mock
+    private VipCounterSummaryRepository vipCounterSummaryRepository;
+
+    @Mock
+    private VipSummaryRepository vipSummaryRepository;
+
+    @InjectMocks
+    private VipCounterServiceImpl vipCounterService; // Class under test
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this); // Initialize mocks
+    }
+
+    @Test
+    void testUpdateMainCounterForAllVips_NoMembersFound() {
+        // Arrange
+        when(vipCounterSummaryRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // Act
+        vipCounterService.updateMainCounterForAllVips();
+
+        // Assert
+        verify(vipSummaryRepository, never()).updateMainCounter(anyString(), anyString(), anyBoolean());
+    }
+
+    @Test
+    void testUpdateMainCounterForAllVips_ValidMembersFound() {
+        // Arrange
+        List<VipCounterSummaryModel> vipSummaries = Arrays.asList(
+            new VipCounterSummaryModel("VIP1", null), 
+            new VipCounterSummaryModel("VIP2", null)
+        );
+        when(vipCounterSummaryRepository.findAll()).thenReturn(vipSummaries);
+
+        // Act
+        vipCounterService.updateMainCounterForAllVips();
+
+        // Assert
+        verify(vipSummaryRepository, times(2)).updateMainCounter(anyString(), anyString(), eq(true));
+    }
+
+    @Test
+    void testUpdateMainCounterForAllVips_ExceptionHandling() {
+        // Arrange
+        List<VipCounterSummaryModel> vipSummaries = Arrays.asList(
+            new VipCounterSummaryModel("VIP1", null)
+        );
+        when(vipCounterSummaryRepository.findAll()).thenReturn(vipSummaries);
+
+        doThrow(new RuntimeException("Database error"))
+            .when(vipSummaryRepository).updateMainCounter(anyString(), anyString(), anyBoolean());
+
+        // Act & Assert
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            vipCounterService.updateMainCounterForAllVips();
+        });
+
+        assertTrue(exception.getMessage().contains("Failed to update main counter"));
+    }
+}
