@@ -255,3 +255,35 @@ public class PDFFormattingExample {
     </changeSet>
 
 </databaseChangeLog>
+============================================
+-- Insert 10 records for the first member_id
+INSERT INTO vip_summary (id, member_id, counter_id, count, total_count, total_amount, created_at)
+VALUES 
+('1', 'member_1', 'counter_1', 5.0, 10.0, 100.0, GETDATE()), -- Same counter
+('2', 'member_1', 'counter_1', 6.0, 15.0, 150.0, GETDATE()),
+('3', 'member_1', 'counter_1', 7.0, 20.0, 200.0, GETDATE()),
+
+('4', 'member_1', 'counter_2', 3.0, 5.0, 50.0, GETDATE()), -- Different counter
+('5', 'member_1', 'counter_3', 4.0, 8.0, 80.0, GETDATE()),
+('6', 'member_1', 'counter_4', 2.0, 4.0, 40.0, GETDATE()),
+
+('7', 'member_1', 'counter_5', 1.0, 2.0, 20.0, GETDATE()), -- 4 different counters
+('8', 'member_1', 'counter_6', 1.5, 3.0, 30.0, GETDATE()),
+('9', 'member_1', 'counter_7', 2.5, 5.0, 50.0, GETDATE()),
+('10', 'member_1', 'counter_8', 3.5, 7.0, 70.0, GETDATE());
+
+-- Insert 10 records for the second member_id
+INSERT INTO vip_summary (id, member_id, counter_id, count, total_count, total_amount, created_at)
+VALUES 
+('11', 'member_2', 'counter_1', 5.0, 10.0, 100.0, GETDATE()), -- Same counter
+('12', 'member_2', 'counter_1', 6.0, 15.0, 150.0, GETDATE()),
+('13', 'member_2', 'counter_1', 7.0, 20.0, 200.0, GETDATE()),
+
+('14', 'member_2', 'counter_2', 3.0, 5.0, 50.0, GETDATE()), -- Different counter
+('15', 'member_2', 'counter_3', 4.0, 8.0, 80.0, GETDATE()),
+('16', 'member_2', 'counter_4', 2.0, 4.0, 40.0, GETDATE()),
+
+('17', 'member_2', 'counter_5', 1.0, 2.0, 20.0, GETDATE()), -- 4 different counters
+('18', 'member_2', 'counter_6', 1.5, 3.0, 30.0, GETDATE()),
+('19', 'member_2', 'counter_7', 2.5, 5.0, 50.0, GETDATE()),
+('20', 'member_2', 'counter_8', 3.5, 7.0, 70.0, GETDATE());
