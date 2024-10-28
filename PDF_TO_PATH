@@ -287,3 +287,116 @@ VALUES
 ('18', 'member_2', 'counter_6', 1.5, 3.0, 30.0, GETDATE()),
 ('19', 'member_2', 'counter_7', 2.5, 5.0, 50.0, GETDATE()),
 ('20', 'member_2', 'counter_8', 3.5, 7.0, 70.0, GETDATE());
+=============================================================
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.slf4j.Logger;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+@SpringBootTest
+public class VipCounterServiceTest {
+
+    @Mock
+    private VipCounterSummaryRepository vipCounterSummaryRepository;
+
+    @Mock
+    private VipProfileRepository vipProfileRepository;
+
+    @Mock
+    private Logger logger;
+
+    @InjectMocks
+    private VipCounterService vipCounterService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    public void testUpdateMainCounterForAllVips_NoVipsFound() {
+        // Mock behavior
+        when(vipCounterSummaryRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // Execute the method
+        vipCounterService.updateMainCounterForAllVips();
+
+        // Verify logger and method interactions
+        verify(logger).warn("No   VIP: {}. Skipping update.", Collections.emptyList());
+        verifyNoMoreInteractions(vipCounterSummaryRepository, vipProfileRepository);
+    }
+
+    @Test
+    public void testUpdateMainCounterForAllVips_WithValidVips() {
+        // Mock data
+        List<VipCounterSummary> summaries = Arrays.asList(
+            new VipCounterSummary("vip1", "counter1", 10, 20, BigDecimal.valueOf(100), BigDecimal.valueOf(500)),
+            new VipCounterSummary("vip1", "counter2", 15, 20, BigDecimal.valueOf(200), BigDecimal.valueOf(500))
+        );
+        when(vipCounterSummaryRepository.findAll()).thenReturn(List.of(summaries.get(0)));
+        when(vipCounterSummaryRepository.findByVipId("vip1")).thenReturn(summaries);
+
+        // Execute the method
+        vipCounterService.updateMainCounterForAllVips();
+
+        // Verify the correct main counter was updated
+        verify(vipProfileRepository).updateMainCounter("vip1", "counter2", true);
+    }
+
+    @Test
+    public void testUpdateMainCounterForVip_NoSummariesFound() {
+        // Mock data
+        when(vipCounterSummaryRepository.findByVipId("vip1")).thenReturn(Collections.emptyList());
+
+        // Execute the method
+        vipCounterService.updateMainCounterForVip("vip1");
+
+        // Verify logger and repository interactions
+        verify(logger).warn("No summaries found for VIP: {}. Skipping update.", "vip1");
+        verifyNoInteractions(vipProfileRepository);
+    }
+
+    @Test
+    public void testCalculateRate_DivisionByZero() {
+        // Mock a summary with zero totals to trigger division by zero
+        VipCounterSummary summary = new VipCounterSummary("vip1", "counter1", 0, 0, BigDecimal.ZERO, BigDecimal.ZERO);
+
+        // Execute the method
+        BigDecimal rate = vipCounterService.calculateRate(summary);
+
+        // Assert the rate is zero and verify logger interaction
+        assertEquals(BigDecimal.ZERO, rate);
+        verify(logger).error("Error calculating rate for counter: {} due to division by zero.", "counter1");
+    }
+
+    @Test
+    public void testCalculateRate_ValidSummary() {
+        // Mock valid summary data
+        VipCounterSummary summary = new VipCounterSummary("vip1", "counter1", 10, 20, BigDecimal.valueOf(100), BigDecimal.valueOf(500));
+
+        // Execute the method
+        BigDecimal rate = vipCounterService.calculateRate(summary);
+
+        // Assert the rate is calculated correctly
+        BigDecimal expectedRate = new BigDecimal("0.60")
+            .multiply(BigDecimal.valueOf(10))
+            .divide(BigDecimal.valueOf(20), BigDecimal.ROUND_HALF_UP)
+            .add(new BigDecimal("0.40")
+            .multiply(BigDecimal.valueOf(100))
+            .divide(BigDecimal.valueOf(500), BigDecimal.ROUND_HALF_UP));
+
+        assertEquals(expectedRate, rate);
+    }
+}
+
