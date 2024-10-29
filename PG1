@@ -364,3 +364,18 @@ Pre-sales transactions are excluded from the calculation.
 Counter Closure Handling:
 
 If the calculated main counter is closed, the system must successfully find and assign a valid open counter from the same market.
+=========
+@Bean
+public Trigger ddpUpdateMainCounterTrigger() {
+    Map<String, String> jobConfigMap = jobConfigurationProps.getJobs().getDownload();
+    if (jobConfigMap == null || !jobConfigMap.containsKey(DdpJobConstants.DDP_JOB_CRON)) {
+        throw new IllegalStateException("Invalid job configuration: CRON expression not found.");
+    }
+
+    String cronExpression = jobConfigMap.get(DdpJobConstants.DDP_JOB_CRON);
+    return TriggerBuilder.newTrigger()
+            .forJob(ddpUpdateMainCounterJob())
+            .withIdentity(JOB_UPDATE_MAIN_COUNTER, AM_JOBGROUP)
+            .withSchedule(CronScheduleBuilder.cronSchedule(cronExpression))
+            .build();
+}
