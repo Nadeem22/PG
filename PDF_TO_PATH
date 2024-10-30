@@ -551,3 +551,50 @@ class VipCounterServiceTest {
         assertTrue(exception.getMessage().contains("Failed to update main counter"));
     }
 }
+**********************************************************
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import java.util.List;
+
+public interface VipProfileRepository extends CrudRepository<VipProfileFull, String> {
+
+    @Query(value = """
+        SELECT v.amid as member_id, 
+               v.market_code, 
+               v.counter_id as COUNTER_CODE 
+        FROM VIP_PROFILE_FULL v 
+        WHERE v.AM_STATUS = 1 
+          AND v.amid IS NOT NULL 
+          AND v.market_code IN :marketCodes 
+          AND v.data_status = '0'
+        """, nativeQuery = true)
+    List<Object[]> findVipProfilesByMarketCodes(List<String> marketCodes);
+}
+********************************************************
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.List;
+
+@Service
+public class VipProfileService {
+
+    @Autowired
+    private VipProfileRepository vipProfileRepository;
+
+    public List<Object[]> getVipProfilesByMarketCodes(List<String> marketCodes) {
+        return vipProfileRepository.findVipProfilesByMarketCodes(marketCodes);
+    }
+}
+**********************************************************
+List<String> marketCodes = List.of("US", "JP", "IN");
+List<Object[]> results = vipProfileService.getVipProfilesByMarketCodes(marketCodes);
+
+for (Object[] row : results) {
+    String memberId = (String) row[0];
+    String marketCode = (String) row[1];
+    String counterCode = (String) row[2];
+
+    System.out.println("Member ID: " + memberId);
+    System.out.println("Market Code: " + marketCode);
+    System.out.println("Counter Code: " + counterCode);
+}
