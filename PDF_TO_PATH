@@ -598,3 +598,21 @@ for (Object[] row : results) {
     System.out.println("Market Code: " + marketCode);
     System.out.println("Counter Code: " + counterCode);
 }
+=====================================================
+INSERT INTO vip_summary (
+    member_id, consumer_note, number_of_transaction, number_of_visit, 
+    visit_date_max, visit_date_min, transaction_date_max, transaction_date_min, 
+    vip_code_bak, is_active, created_by, created_date, 
+    last_modified_by, last_modified_date, market_code, 
+    last_modified_counter_id, is_merged, am_status, data_status
+) VALUES 
+('MEM001', 'Note 1', 5, 10, '2024-01-01', '2024-01-01', '2024-02-01', '2024-01-02', 'VIP01', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT1', 'COUNTER1', 1, 1, 0),
+('MEM002', 'Note 2', 7, 15, '2024-01-02', '2024-01-01', '2024-02-02', '2024-01-03', 'VIP02', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT2', 'COUNTER2', 1, 1, 0),
+('MEM003', 'Note 3', 3, 20, '2024-01-03', '2024-01-01', '2024-02-03', '2024-01-04', 'VIP03', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT3', 'COUNTER3', 1, 1, 0),
+('MEM004', 'Note 4', 6, 12, '2024-01-04', '2024-01-01', '2024-02-04', '2024-01-05', 'VIP04', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT1', 'COUNTER4', 1, 1, 0),
+('MEM005', 'Note 5', 9, 25, '2024-01-05', '2024-01-01', '2024-02-05', '2024-01-06', 'VIP05', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT2', 'COUNTER5', 1, 1, 0),
+('MEM006', 'Note 6', 8, 30, '2024-01-06', '2024-01-01', '2024-02-06', '2024-01-07', 'VIP06', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT3', 'COUNTER6', 1, 1, 0),
+('MEM007', 'Note 7', 4, 18, '2024-01-07', '2024-01-01', '2024-02-07', '2024-01-08', 'VIP07', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT1', 'COUNTER7', 1, 1, 0),
+('MEM008', 'Note 8', 10, 40, '2024-01-08', '2024-01-01', '2024-02-08', '2024-01-09', 'VIP08', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT2', 'COUNTER8', 1, 1, 0),
+('MEM009', 'Note 9', 2, 16, '2024-01-09', '2024-01-01', '2024-02-09', '2024-01-10', 'VIP09', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT3', 'COUNTER9', 1, 1, 0),
+('MEM010', 'Note 10', 11, 35, '2024-01-10', '2024-01-01', '2024-02-10', '2024-01-11', 'VIP10', 1, 'Admin', GETDATE(), 'Admin', GETDATE(), 'MKT1', 'COUNTER10', 1, 1, 0);
