@@ -198,3 +198,56 @@ WHERE
 GROUP BY 
     T.member_id, T.counter_id;
 
+=============================
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import javax.persistence.AttributeConverter;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class SkinResultEnumTest {
+
+    private final AttributeConverter<SkinResultEnum, Integer> converter = new SkinResultEnum.EnumConverter();
+
+    @Test
+    void testConvertToDatabaseColumn() {
+        // Test conversion to database column
+        assertEquals(0, converter.convertToDatabaseColumn(SkinResultEnum.NO_DATA));
+        assertEquals(1, converter.convertToDatabaseColumn(SkinResultEnum.WEEK));
+        assertEquals(2, converter.convertToDatabaseColumn(SkinResultEnum.EVERAGE));
+        assertEquals(3, converter.convertToDatabaseColumn(SkinResultEnum.BEAUTY));
+
+        // Test null conversion (should return NO_DATA code)
+        assertEquals(0, converter.convertToDatabaseColumn(null));
+    }
+
+    @Test
+    void testConvertToEntityAttribute() {
+        // Test conversion from database value to enum
+        assertEquals(SkinResultEnum.NO_DATA, converter.convertToEntityAttribute(0));
+        assertEquals(SkinResultEnum.WEEK, converter.convertToEntityAttribute(1));
+        assertEquals(SkinResultEnum.EVERAGE, converter.convertToEntityAttribute(2));
+        assertEquals(SkinResultEnum.BEAUTY, converter.convertToEntityAttribute(3));
+
+        // Test invalid code (should return NO_DATA)
+        assertEquals(SkinResultEnum.NO_DATA, converter.convertToEntityAttribute(99));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "0, NO_DATA",
+        "1, WEEK",
+        "2, EVERAGE",
+        "3, BEAUTY",
+        "99, null" // Test case for invalid code
+    })
+    void testGetByCode(Integer code, SkinResultEnum expected) {
+        if (expected == null) {
+            assertNull(SkinResultEnum.getByCode(code));
+        } else {
+            assertEquals(expected, SkinResultEnum.getByCode(code));
+        }
+    }
+}
