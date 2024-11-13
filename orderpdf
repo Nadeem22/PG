@@ -1,0 +1,91 @@
+package com.example.pdfreport.util;
+
+import com.example.pdfreport.model.ReportRequest;
+import com.example.pdfreport.model.ProductDetails;
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import org.springframework.stereotype.Component;
+
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+
+@Component
+public class PdfGenerator {
+
+    public ByteArrayOutputStream generateOrderReport(ReportRequest request) {
+        Document document = new Document();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try {
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            // Add Title
+            addReportTitle(document);
+
+            // Add Order Metadata
+            addOrderDetails(document, request);
+
+            // Add Table
+            addProductTable(document, request.getProducts());
+
+            document.close();
+        } catch (DocumentException e) {
+            throw new RuntimeException("Error generating PDF", e);
+        }
+
+        return out;
+    }
+
+    private void addReportTitle(Document document) throws DocumentException {
+        Font font = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
+        Paragraph title = new Paragraph("Order Details", font);
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+        document.add(Chunk.NEWLINE);
+    }
+
+    private void addOrderDetails(Document document, ReportRequest request) throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(10f);
+        table.setSpacingAfter(10f);
+
+        table.addCell("Order Number: " + request.getOrderNumber());
+        table.addCell("BC ID: " + request.getBcId());
+        table.addCell("Order Date and Time: " + request.getOrderDateTime());
+        table.addCell("Counter Code: " + request.getCounterCode());
+        table.addCell("Delivery Date: " + request.getDeliveryDate());
+        table.addCell("Logged By: " + request.getLoggedBy());
+
+        document.add(table);
+    }
+
+    private void addProductTable(Document document, List<ProductDetails> products) throws DocumentException {
+        PdfPTable table = new PdfPTable(7); // 7 Columns for your table structure
+        table.setWidthPercentage(100);
+
+        // Add Table Headers
+        table.addCell("Barcode");
+        table.addCell("GCAS Code");
+        table.addCell("Product Name");
+        table.addCell("Retail Price");
+        table.addCell("Quantity");
+        table.addCell("Order Value");
+        table.addCell("Transit");
+
+        // Add Table Data
+        for (ProductDetails product : products) {
+            table.addCell(product.getBarcode());
+            table.addCell(product.getGcasCode());
+            table.addCell(product.getProductName());
+            table.addCell(String.valueOf(product.getRetailPrice()));
+            table.addCell(String.valueOf(product.getQuantity()));
+            table.addCell(String.valueOf(product.getOrderValue()));
+            table.addCell(String.valueOf(product.getTransit()));
+        }
+
+        document.add(table);
+    }
+}
