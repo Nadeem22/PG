@@ -251,3 +251,40 @@ class SkinResultEnumTest {
         }
     }
 }
+======
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+
+public class SFTPConnectionTest {
+
+    public static void main(String[] args) {
+        String sftpHost = "your_sftp_server_ip"; // Replace with SFTP server IP
+        int sftpPort = 22; // Default SFTP port
+        String sftpUser = "your_username"; // Replace with username
+        String sftpPassword = "your_password"; // Replace with password
+
+        Session session = null;
+
+        try {
+            JSch jsch = new JSch();
+            session = jsch.getSession(sftpUser, sftpHost, sftpPort);
+            session.setPassword(sftpPassword);
+
+            // Disable strict host key checking for this test
+            session.setConfig("StrictHostKeyChecking", "no");
+
+            System.out.println("Connecting to SFTP server...");
+            session.connect(30000); // 30 seconds timeout
+            System.out.println("Connected successfully!");
+
+        } catch (Exception e) {
+            System.err.println("Failed to connect to SFTP server: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+                System.out.println("Disconnected from SFTP server.");
+            }
+        }
+    }
+}
