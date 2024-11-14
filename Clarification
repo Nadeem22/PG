@@ -307,3 +307,29 @@ public ResponseEntity<Resource> generatePdfIfOrder(String marketCode, String lan
             .headers(headers)
             .body(new InputStreamResource(pdfStream));
 }
+###
+PdfPTable table = new PdfPTable(7); // 7 Columns for your table structure
+table.setWidthPercentage(100);
+
+// Define the headers
+String[] headers = {"Barcode", "GCAS Code", "Product Name", "Retail Price", "Quantity", "Order Value", "Transit"};
+
+// Apply the same styling to all header cells in a loop
+for (String header : headers) {
+    PdfPCell headerCell = new PdfPCell(new Phrase(header));
+    headerCell.setBackgroundColor(BaseColor.LIGHT_GRAY); // Set gray background
+    table.addCell(headerCell);
+}
+
+// Add Table Data
+for (IfOrderProductModel product : productList) {
+    table.addCell(product.getBarcode());
+    table.addCell(product.getGcasCode());
+    table.addCell(product.getNameEn());
+    table.addCell(String.valueOf(product.getRetailPrice()));
+    table.addCell(String.valueOf(product.getInStockQty()));
+    table.addCell(String.valueOf(product.getOrderValue()));
+    table.addCell(String.valueOf(product.getInTransitQty()));
+}
+
+document.add(table);
