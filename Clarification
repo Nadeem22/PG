@@ -240,3 +240,37 @@ private TransactionEntity mapToTransactionEntity(String transactionData) {
 
     return entity;
 }
+=======
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+public class DummyDataGenerator {
+    public static void main(String[] args) {
+        // Create a list of IfOrderProductModel
+        List<IfOrderProductModel> productList = new ArrayList<>();
+
+        // Add 20 dummy entries
+        for (int i = 1; i <= 20; i++) {
+            IfOrderProductModel product = IfOrderProductModel.builder()
+                    .id("ID" + i)
+                    .productCode("PCode" + i)
+                    .productThumbnail("Thumbnail" + i + ".jpg")
+                    .nameEn("Product Name " + i)
+                    .nameMarket("Market Name " + i)
+                    .barcode("1234567890" + i)
+                    .gcasCode("GCAS" + i)
+                    .retailPrice(BigDecimal.valueOf(100 + i))
+                    .orderQuantity(i * 2)
+                    .orderValue(BigDecimal.valueOf((100 + i) * 2))
+                    .inTransitQty(i)
+                    .inStockQty(50 + i)
+                    .build();
+
+            productList.add(product);
+        }
+
+        // Print dummy data
+        productList.forEach(System.out::println);
+    }
+}
