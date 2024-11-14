@@ -274,3 +274,36 @@ public class DummyDataGenerator {
         productList.forEach(System.out::println);
     }
 }
+@@@@
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.io.ByteArrayInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+@Override
+public ResponseEntity<Resource> generatePdfIfOrder(String marketCode, String languageCode, String id, String sortBy) {
+    ByteArrayInputStream pdfStream = inventoryIfOrdersService.generatePdfIfOrderServiceByOrderId(
+            marketCode, languageCode, id, sortBy);
+    
+    // Save PDF locally for debugging
+    try (FileOutputStream fos = new FileOutputStream("C:/temp/report.pdf")) {
+        byte[] pdfBytes = pdfStream.readAllBytes();
+        fos.write(pdfBytes); // Save the PDF content to local storage
+        pdfStream = new ByteArrayInputStream(pdfBytes); // Reset stream after reading
+    } catch (IOException e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report.pdf");
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+
+    return ResponseEntity.status(HttpStatus.OK)
+            .headers(headers)
+            .body(new InputStreamResource(pdfStream));
+}
