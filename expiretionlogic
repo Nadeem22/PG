@@ -1,0 +1,38 @@
+for (Entry<String, List<ProductOrder>> orderEntry : orderGroupMap.entrySet()) {
+    String counterId = orderEntry.getKey();
+    if (counterIds.contains(counterId)) {
+        // Call a separate method to handle draft order updates and adding orders to poList
+        handleDraftOrdersAndAddToPoList(counterId, orderEntry.getValue(), poList);
+    } else {
+        // Handle invalid counters
+        invalidCounter.add(counterId);
+        orderEntry.getValue().forEach(order -> invalidIFOrderCode.add(order.getOrderCode()));
+    }
+}
+
+if (!poList.isEmpty()) {
+    saveProductOrder(poList);
+    Log.info(InventoryConstants.LOG_UPDATEIFORDER_SAVE_ORDER_SIZE, poList.size());
+}
+++++
+private void handleDraftOrdersAndAddToPoList(String counterId, List<ProductOrder> orderList, List<ProductOrder> poList) {
+    // Check if a record exists with order_state = 'draft' for this counterId
+    ProductOrder draftOrder = entityManager.createQuery(
+            "SELECT po FROM ProductOrder po WHERE po.counterId = :counterId AND po.orderState = :orderState", 
+            ProductOrder.class)
+            .setParameter("counterId", counterId)
+            .setParameter("orderState", "draft")
+            .getResultStream()
+            .findFirst()
+            .orElse(null);
+
+    if (draftOrder != null) {
+        // Update the order state to 'expired'
+        draftOrder.setOrderState("expired");
+        entityManager.merge(draftOrder);
+        Log.info("Updated draft order to expired for counterId: {}", counterId);
+    }
+
+    // Add the new orders to the poList
+    poList.addAll(orderList);
+}
