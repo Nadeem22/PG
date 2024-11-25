@@ -333,3 +333,30 @@ for (IfOrderProductModel product : productList) {
 }
 
 document.add(table);
+###
+Subject: Request for Permanent Resolution of Intermittent Service Issues
+
+Dear [Manager's Name],
+
+I hope this email finds you well.
+
+I am writing to highlight some ongoing issues that are impacting productivity and timely task delivery:
+
+1. Key Vault Access: At times, I encounter a "Key Vault not accessible" error, which appears to be related to firewall restrictions.
+
+
+2. Kubernetes Pod Accessibility: The application pods on Kubernetes occasionally become inaccessible.
+
+
+3. SFTP Server Connectivity: The SFTP server frequently fails to connect, making it challenging to check logs when needed.
+
+
+
+These issues occur intermittently—working fine at times but failing unpredictably—causing delays and hindering overall efficiency.
+
+I kindly request a permanent resolution for these problems to ensure smoother workflows and timely delivery of tasks. Please let me know if additional details or support are needed from my end to address these issues.
+
+Looking forward to your guidance.
+
+Best regards,
+Mohammad Nadeem
