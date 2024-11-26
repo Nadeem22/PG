@@ -1,0 +1,99 @@
+@Service
+public class ProductOrderService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductOrderService.class);
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private ProductOrderRepository productOrderRepository;
+
+    public void saveProductList(Map<String, List<ProductOrder>> orderGroupMap, List<String> validCounterIds) {
+        if (orderGroupMap == null || orderGroupMap.isEmpty()) {
+            LOGGER.warn("Order group map is null or empty. Nothing to process.");
+            return;
+        }
+
+        if (validCounterIds == null || validCounterIds.isEmpty()) {
+            LOGGER.warn("Valid counter IDs list is null or empty. Nothing to validate.");
+            return;
+        }
+
+        List<ProductOrder> ordersToSave = new ArrayList<>();
+
+        try {
+            for (Map.Entry<String, List<ProductOrder>> entry : orderGroupMap.entrySet()) {
+                String counterId = entry.getKey();
+                String realCounterId = getRealCounterId(counterId);
+
+                // Null check for realCounterId
+                if (realCounterId == null) {
+                    LOGGER.warn("Real counter ID is null for counterId: {}", counterId);
+                    continue;
+                }
+
+                // Validate counter ID
+                if (!validCounterIds.contains(counterId)) {
+                    LOGGER.warn("Invalid counter ID: {}", counterId);
+                    continue;
+                }
+
+                LOGGER.info("Processing counter ID: {}", counterId);
+
+                // Check if a draft order exists
+                ProductOrder existingDraftOrder = getExistingDraftOrder(realCounterId);
+                if (existingDraftOrder != null) {
+                    existingDraftOrder.setOrderState(OrderState.EXPIRED);
+                    entityManager.merge(existingDraftOrder);
+                    LOGGER.info("Marked existing draft order as expired for counter ID: {}", counterId);
+                }
+
+                // Add new orders for saving
+                List<ProductOrder> currentOrders = entry.getValue();
+                if (currentOrders != null && !currentOrders.isEmpty()) {
+                    ordersToSave.addAll(currentOrders);
+                } else {
+                    LOGGER.warn("No orders found for counter ID: {}", counterId);
+                }
+            }
+
+            // Save all orders
+            if (!ordersToSave.isEmpty()) {
+                productOrderRepository.saveAll(ordersToSave);
+                LOGGER.info("Successfully saved {} product orders.", ordersToSave.size());
+            } else {
+                LOGGER.warn("No valid orders to save.");
+            }
+
+        } catch (Exception e) {
+            LOGGER.error("An error occurred while saving product orders: {}", e.getMessage(), e);
+            throw new ProductOrderProcessingException("Failed to save product orders", e);
+        }
+    }
+
+    private ProductOrder getExistingDraftOrder(String counterId) {
+        try {
+            return entityManager.createQuery(
+                    "SELECT po FROM ProductOrder po WHERE po.counterId = :counterId AND po.orderState = :orderState",
+                    ProductOrder.class)
+                .setParameter("counterId", counterId)
+                .setParameter("orderState", OrderState.DRAFT)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+        } catch (Exception e) {
+            LOGGER.error("Error while fetching existing draft order for counter ID: {}", counterId, e);
+            return null;
+        }
+    }
+
+    private String getRealCounterId(String counterId) {
+        // Mocked implementation for real counter ID
+        if (counterId == null) {
+            LOGGER.warn("Counter ID is null. Cannot fetch real counter ID.");
+            return null;
+        }
+        return "REAL_" + counterId; // Replace with actual logic
+    }
+}
