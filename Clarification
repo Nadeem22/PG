@@ -360,3 +360,10 @@ Looking forward to your guidance.
 
 Best regards,
 Mohammad Nadeem
+-------
+@Repository
+public interface ProductOrderRepository extends JpaRepository<ProductOrder, String> {
+
+    @Query("SELECT po FROM ProductOrder po WHERE po.counterId = :counterId AND po.orderState = :orderState")
+    ProductOrder findDraftOrderByCounterId(@Param("counterId") String counterId, @Param("orderState") String orderState);
+}
