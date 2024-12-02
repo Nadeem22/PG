@@ -1,0 +1,79 @@
+private void saveProdList(Map<String, List<ProductOrder>> orderGroupMap, List<String> counterIds) {
+    List<ProductOrder> productOrderList = new ArrayList<>();
+    log.info(InventoryConstants.LOG_UPDATEIFORDER_SAVE_ORDER);
+
+    for (Map.Entry<String, List<ProductOrder>> orderEntry : orderGroupMap.entrySet()) {
+        try {
+            processOrderEntry(orderEntry, counterIds, productOrderList);
+        } catch (Exception e) {
+            log.error("Error processing order for counterId: {}. Skipping this order entry. Error: {}", orderEntry.getKey(), e.getMessage(), e);
+        }
+    }
+
+    if (!productOrderList.isEmpty()) {
+        saveProductOrder(productOrderList);
+    }
+
+    log.info(InventoryConstants.LOG_UPDATEIFORDER_SAVE_ORDER_SIZE, productOrderList.size());
+}
+
+/**
+ * Process a single order entry and update the product order list.
+ *
+ * @param orderEntry       the order entry to process
+ * @param counterIds       the list of valid counter IDs
+ * @param productOrderList the list of product orders to update
+ */
+private void processOrderEntry(Map.Entry<String, List<ProductOrder>> orderEntry, List<String> counterIds, List<ProductOrder> productOrderList) {
+    List<ProductOrder> orders = orderEntry.getValue();
+    String counterId = orderEntry.getKey();
+
+    validateOrderSize(orders, counterId);
+    String realCounterId = getRealCounterId(counterId);
+
+    if (counterIds.contains(counterId)) {
+        handleValidCounter(orders, realCounterId, productOrderList);
+    } else {
+        handleInvalidCounter(counterId, orders);
+    }
+}
+
+/**
+ * Validate the size of the order list for a given counter ID.
+ *
+ * @param orders    the list of orders
+ * @param counterId the counter ID
+ */
+private void validateOrderSize(List<ProductOrder> orders, String counterId) {
+    if (orders.size() > 1) {
+        String errorMessage = String.format("More than one order is not allowed for counterId: %s", counterId);
+        log.error(errorMessage);
+        throw new IllegalStateException(errorMessage);
+    }
+}
+
+/**
+ * Handle a valid counter scenario and update the product order list.
+ *
+ * @param orders           the list of orders
+ * @param realCounterId    the real counter ID
+ * @param productOrderList the list of product orders to update
+ */
+private void handleValidCounter(List<ProductOrder> orders, String realCounterId, List<ProductOrder> productOrderList) {
+    log.info("Processing counterId: {}", realCounterId);
+
+    ProductOrder draftOrder = findDraftOrderByCounterId(realCounterId);
+
+    if (draftOrder != null) {
+        String orderCodeFromRequest = orders.get(0).getOrderCode();
+
+        if (!orderCodeFromRequest.equals(draftOrder.getOrderCode())) {
+            draftOrder.setOrderState(OrderState.EXPIRED);
+            entityManager.merge(draftOrder);
+            log.info("Updated order state to EXPIRED for draftOrder with ID: {}", draftOrder.getId());
+        }
+    }
+
+    // Add all orders from the current entry to the product order list
+    productOrderList.addAll(orders);
+}
