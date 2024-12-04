@@ -393,3 +393,116 @@ protected Map<String, List<DdpExportDaInventoryDto>> queryData(DataUploadBaseCon
     log.debug("Return result: {}", conf.getLocaleTempFilePath());
     return result;
 }
+======================
+<select id="getDatallianceInventoryData" resultType="com.pg.sparc.model.DdpExportDaInventoryDto">
+    DECLARE @9_hours_later datetime, @1_day_before_9_hours_later datetime,
+            @7_day_before_9hrs_later_Date datetime, @1_day_before_9_hours_later_yyMMdd varchar(8);
+    set @9_hours_later = convert(datetime, convert(date, DATEADD(HOUR, 9, GETDATE())));
+    set @9_hours_later = DATEADD(HOUR, -9, @9_hours_later);
+    set @1_day_before_9_hours_later_yyMMdd = format(DATEADD(HOUR, 9, GETDATE()) -1, 'yyyyMMdd');
+    set @7_day_before_9hrs_later_Date = DATEADD(DAY, -7, @9_hours_later);
+    set @1_day_before_9_hours_later = @9_hours_later - 1;
+
+    SELECT reportDate, activityDate, COUNTER_CODE AS counterCode, barcode, uom, QTY_ON_HAND AS qtyOnHand, QTY_SOLD AS qtySold, REV_QTY AS revQty,
+           OPEN_ORDER_QTY AS openOrderQty, floor(price) price
+    FROM( 
+         SELECT DISTINCT REPORTDATE, ACTIVITYDATE, counter_code, BARCODE, UOM, QTY_ON_HAND, QTY_SOLD, REV_QTY, OPEN_ORDER_QTY, PRICE
+          FROM (
+                select @1_day_before_9_hours_later_yyMMdd AS REPORTDATE,
+                       @1_day_before_9_hours_later_yyMMdd AS ACTIVITYDATE,
+                       ic.counter_code,
+                       prd.BARCODE,
+                       'IT' AS UOM,
+                       isnull(STG.QTY,0) + isnull(ret.not_received_return_qty,0) AS QTY_ON_HAND,
+                       isnull(LFT.TRAP_QTY,0) AS QTY_SOLD,
+                       isnull(REV.REV_QTY,0) AS REV_QTY,
+                       isnull(ORD.SHIP_QTY,0) AS OPEN_ORDER_QTY,
+                       isnull(PP.PRODUCT_PRICE,0) AS PRICE
+                from location_storage stg
+                INNER JOIN (
+                    SELECT RIGHT(CONCAT(REPLICATE('0',14),LEFT(P.BARCODE,14)),14) AS BARCODE , P.id product_id, p.product_code, P.END_EFFECT_DATE, P.START_EFFECT_DATE, P.IS_ONSALE 
+                    FROM PRODUCT P 
+                    WHERE brand_id = 'Brand_010' and (is_new_launch is NULL or is_new_launch = 0)
+                      AND product_type = 'Product'
+                 ) PRD 
+                 on stg.product_id  = prd.product_id
+                INNER JOIN product_group_map mgp on mgp.product_id = prd.product_id 
+                INNER JOIN location l ON l.id = stg.location_id 
+                INNER JOIN warehouse w on w.id = l.warehouse_id 
+                INNER JOIN counter ic  on ic.id = w.counter_id 
+                <if test="counterCodeList != null and counterCodeList.size() > 0">
+                   AND ic.market_code IN 
+                   <foreach item="item" index="index" collection="counterCodeList" open="(" separator="," close=")">
+                       #{item}
+                   </foreach>
+                </if>
+                INNER JOIN ( 
+                      SELECT temp1.product_id, temp1.product_price FROM product_price temp1 inner join ( 
+                          SELECT product_id, MAX(effective_date) effective_date FROM product_price 
+                          where effective_date <![CDATA[ <= ]]> GETDATE() and is_active = 1 
+                          GROUP by product_id ) temp2  
+                      on temp1.product_id = temp2.product_id 
+                      and temp1.effective_date = temp2.effective_date 
+                      ) pp on pp.product_id = stg.product_id  
+                LEFT JOIN ( 
+                        SELECT t.counter_id, t.product_id, SUM(t.qty) as ship_qty from (
+                              select po.counter_id, poi.product_id, isnull(prs.qty, poi.order_qty) qty
+                              from product_order po
+                              join product_order_item poi
+                              on  po.id = poi.order_id
+                              LEFT JOIN (
+                              select ps.counter_id, psi.product_id, psi.qty, ps.order_code, ps.shipment_type_code, ps.ship_date
+                              from product_shipment ps, product_shipment_item psi
+                              where ps.id = psi.shipment_id
+                              ) prs
+                              on po.order_code = prs.order_code and po.counter_id = prs.counter_id and poi.product_id = prs.product_id
+                              and prs.shipment_type_code = '0001'
+                              where po.order_state in ('Processing','InTransit')
+                              and isnull(po.delivery_date, po.order_date) <![CDATA[ >= ]]> @7_day_before_9hrs_later_Date
+                              UNION ALL
+                              select ps.counter_id, psi.product_id, psi.qty from product_shipment ps, product_shipment_item psi
+                              where ps.id = psi.shipment_id  and NOT EXISTS (select 1 from product_order po where po.order_code = ps.order_code)
+                              and ps.shipment_type_code = '0001'
+                              and ps.receive_state = 'NotReceived'
+                              and ship_date <![CDATA[ >= ]]> @7_day_before_9hrs_later_Date
+                        ) t GROUP BY t.counter_id, t.product_id
+                    )ORD on ord.product_id = stg.product_id and ic.id = ord.counter_id 
+                LEFT JOIN ( 
+                    SELECT pr.counter_id, pri.product_id, SUM(pri.qty)as REV_QTY FROM product_receiving pr, product_receive_item pri  
+                        where pr.id = pri.receive_id
+                        and pr.receive_date <![CDATA[ >= ]]> @1_day_before_9_hours_later
+                        and pr.receive_date <![CDATA[ < ]]> @1_day_before_9_hours_later + 1
+                        GROUP BY pr.counter_id , pri.product_id
+                    ) rev on stg.product_id = rev.product_id and rev.counter_id = ic.id  
+                LEFT JOIN ( 
+                       SELECT t.counter_id , SUM(tp.qty) as TRAP_QTY, tp.product_id from transaction_order t, transaction_product tp  
+                        where t.id  = tp.transaction_id 
+                        and t.transaction_type = 'Normal'
+                         and t.last_modified_date <![CDATA[ >= ]]> @1_day_before_9_hours_later 
+                         and t.last_modified_date <![CDATA[ < ]]> @1_day_before_9_hours_later +1 
+                       GROUP BY t.counter_id, tp.product_id 
+                       ) lft on lft.product_id = stg.product_id and ic.id = lft.counter_id
+                LEFT JOIN ( 
+                       SELECT r.counter_id, r.product_id, SUM(r.not_received_return_qty) as not_received_return_qty 
+                       FROM (SELECT A.counter_id, B.product_id, B.rev_qty - B.return_qty as not_received_return_qty  
+                       FROM PRODUCT_RETURN A, PRODUCT_RETURN_ITEM B 
+                       WHERE A.id = B.return_id  
+                       AND A.to_warehouse = 'SankyuDC') r  
+                       GROUP BY r.counter_id, r.product_id 
+                       )ret on ret.counter_id = ic.id and ret.product_id = stg.product_id 	 
+                WHERE ic.counter_state <![CDATA[ <> ]]> 'Closed'
+                <if test="counterCodeList != null and counterCodeList.size() > 0">
+                   AND ic.market_code IN 
+                   <foreach item="item" index="index" collection="counterCodeList" open="(" separator="," close=")">
+                       #{item}
+                   </foreach>
+                </if>
+                AND prd.END_EFFECT_DATE > @1_day_before_9_hours_later 
+                AND prd.IS_ONSALE = 1 
+                AND mgp.group_id = 'CTLGroup_00' 
+                and ic.counter_code not like 'EV%' 
+              ) AS V1 
+          )AS T1 
+    UNION ALL 
+    ...
+</select>
