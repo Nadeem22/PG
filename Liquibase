@@ -362,3 +362,34 @@ VALUES (601, 201, 'SankyuDC');
 
 INSERT INTO product_return_item (return_id, product_id, rev_qty, return_qty)
 VALUES (601, 1, 10, 5);
+====================
+@Override
+protected Map<String, List<DdpExportDaInventoryDto>> queryData(DataUploadBaseConfiguration conf) {
+    log.debug("Start query data...");
+
+    // Parse the pilotCounters string into a List
+    List<String> counterCodeList = new ArrayList<>();
+    if (StringUtils.isNotBlank(pilotCounters)) {
+        counterCodeList = Arrays.stream(pilotCounters.split(COMMA))
+            .map(String::trim)
+            .filter(StringUtils::isNotBlank)
+            .collect(Collectors.toList());
+    }
+
+    // Fetch the data from exportDatallianceInventoryData
+    List<DdpExportDaInventoryDto> daInventoryData = ddpExportDaInventoryData.exportDatallianceInventoryData();
+
+    // Filter the data based on pilotCounters
+    List<DdpExportDaInventoryDto> filteredData = daInventoryData.stream()
+        .filter(dto -> counterCodeList.contains(dto.getCounterCode()))
+        .collect(Collectors.toList());
+
+    // Map the filtered data to a result map
+    Map<String, List<DdpExportDaInventoryDto>> result = new HashMap<>();
+    String fileName = ddpFileNameUtil.generateFileNameWithTime(FILE_NAME, true, DdpDownloadFileSuffix.CSV);
+    result.put(fileName, filteredData);
+
+    conf.getCsvFileConfiguration().setFileNames(new String[]{fileName});
+    log.debug("Return result: {}", conf.getLocaleTempFilePath());
+    return result;
+}
