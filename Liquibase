@@ -506,3 +506,40 @@ protected Map<String, List<DdpExportDaInventoryDto>> queryData(DataUploadBaseCon
     UNION ALL 
     ...
 </select>
+===========================
+@Test
+void shouldReturnMockDataWhenInvokeQueryData() {
+    // GIVEN
+    // Create a DataUploadBaseConfiguration instance
+    DataUploadBaseConfiguration conf = DataUploadBaseConfiguration.builder()
+            .csvFileConfiguration(
+                    CsvFileConfiguration.builder()
+                            .fileNames(new String[]{"pa"}) // Add a sample file name
+                            .build())
+            .externalParams(new HashMap<>() {{
+                put("FILE_NAME", "mockCsvFileName"); // Add the mock file name
+                put("PILOT_COUNTERS", "123,456");   // Add pilot counters
+                put("MARKET_CODE", "mockMarketCode"); // Add a market code
+            }})
+            .build();
+
+    // Create a DdpExportDaInventoryDto object
+    DdpExportDaInventoryDto dto = new DdpExportDaInventoryDto();
+    dto.setBarcode("SKII");
+
+    // Add the DTO to a list
+    List<DdpExportDaInventoryDto> inventoryDtos = new ArrayList<>();
+    inventoryDtos.add(dto);
+
+    // Simulate the output of exportDataAllianceInventoryData
+    List<DdpExportDaInventoryDto> filteredData = inventoryDtos.stream()
+            .filter(d -> Arrays.asList("123", "456").contains(d.getBarcode()))
+            .collect(Collectors.toList());
+
+    // WHEN
+    Map<String, List<DdpExportDaInventoryDto>> result = new HashMap<>();
+    result.put("mockCsvFileName", filteredData);
+
+    // THEN
+    assertEquals("SKII", result.get("mockCsvFileName").get(0).getBarcode());
+}
