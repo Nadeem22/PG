@@ -522,6 +522,39 @@ void shouldReturnMockDataWhenInvokeQueryData() {
                 put("MARKET_CODE", "mockMarketCode"); // Add a market code
             }})
             .build();
+================
+@Test
+void shouldReturnEmptyResultWhenNoMatchingData() {
+    // GIVEN
+    // Mock the external parameters map
+    Map<String, String> externalParams = new HashMap<>();
+    externalParams.put("FILE_NAME", "mockCsvFileName"); // Add mock file name
+    externalParams.put("PILOT_COUNTERS", "789"); // No matching barcode
+    externalParams.put("MARKET_CODE", "mockMarketCode"); // Add mock market code
+
+    // Mock DataUploadBaseConfiguration
+    DataUploadBaseConfiguration conf = Mockito.mock(DataUploadBaseConfiguration.class);
+    when(conf.getExternalParams()).thenReturn(externalParams);
+
+    // Create mock DdpExportDaInventoryDto object
+    DdpExportDaInventoryDto dto = new DdpExportDaInventoryDto();
+    dto.setBarcode("123"); // No match with pilot counters
+
+    // Mock inventory data
+    List<DdpExportDaInventoryDto> inventoryDtos = new ArrayList<>();
+    inventoryDtos.add(dto);
+
+    // Mock the exportDataAllianceInventoryData method
+    when(ddpExportDaInventoryData.exportDataAllianceInventoryData(anyString(), anyBoolean(), any()))
+            .thenReturn(inventoryDtos);
+
+    // WHEN
+    Map<String, List<DdpExportDaInventoryDto>> result = ddpExportDaInventoryDataJob.queryData(conf);
+
+    // THEN
+    assertTrue(result.isEmpty()); // Verify that the result is empty
+}
+
 
     // Create a DdpExportDaInventoryDto object
     DdpExportDaInventoryDto dto = new DdpExportDaInventoryDto();
