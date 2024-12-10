@@ -576,3 +576,33 @@ void shouldReturnEmptyResultWhenNoMatchingData() {
     // THEN
     assertEquals("SKII", result.get("mockCsvFileName").get(0).getBarcode());
 }
+=================================
+@startuml
+title Job_ExportDaInventoryData - Pilot Counter Code Logic Flow
+
+start
+:Read YAML Configuration;
+:Fetch `pilotCounters` and `marketCode` from config;
+:Split `pilotCounters` by comma (",");
+:Filter non-blank counter codes;
+:Store result in `counterCodeList`;
+
+:Fetch Inventory Data using marketCode;
+:Call exportDataLianceInventoryData(marketCode);
+
+:Filter Inventory Data;
+:Compare each DTO's counterCode with counterCodeList;
+if (Match Found?) then (Yes)
+    :Add DTO to filtered list;
+else (No)
+    :Ignore DTO;
+endif
+
+:Generate File Name;
+:Call ddpFileNameUtil.generateFileName;
+:Prepare CSV file with filtered data;
+
+:Return filtered Data Map;
+
+stop
+@enduml
