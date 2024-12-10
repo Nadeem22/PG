@@ -630,3 +630,26 @@ endif
 
 stop
 @enduml
+=========================
+@startuml
+title Job_UpdateIFOrderFromXml - Pilot Counter Logic Flow
+
+start
+:Fetch pilotCounters from YAML;
+:Split pilotCounters by comma (",");
+:Filter blank values -> Create pilotCounterList;
+
+:Iterate over iFOrderMap;
+:Check IFOrderDTO key matches country value;
+if (Match Found?) then (Yes)
+    :Call removeNonPilotCounters();
+    :Remove IFOrderDTO not in pilotCounterList;
+else (No)
+    :Skip current entry;
+endif
+
+:Retrieve existing orders -> existingOrdersMap;
+:Save filtered product list with saveProdList();
+
+stop
+@enduml
