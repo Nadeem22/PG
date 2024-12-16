@@ -322,3 +322,40 @@ public CustomProductResponse getProductPageResponse() {
     return response;
 }
 =============================================
+package company.pg.sparc.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.List;
+import java.util.Arrays;
+
+@Configuration
+@ConfigurationProperties(prefix = "sparc")
+@Getter
+@Setter
+public class SparcProperties {
+
+    private Ddp ddp;
+    private Query query;
+
+    @Getter
+    @Setter
+    public static class Ddp {
+        private List<String> pilotCounters;
+
+        public void setPilotCounters(String pilotCounters) {
+            // Split comma-separated values into a List
+            this.pilotCounters = Arrays.asList(pilotCounters.split(",\\s*"));
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Query {
+        private int size;
+        private int batchSize;  // Maps to query-batch-size
+    }
+}
