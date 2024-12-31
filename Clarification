@@ -391,3 +391,26 @@ class StockRevokingResultModel {
     private Boolean isValid;
     private String errorMessage;
 }
+@Override
+public void processMessage(CommonServiceBusMessage message) {
+    try {
+        // Extract the raw payload
+        Object rawPayload = message.getPayload();
+        log.info("Raw Payload Content: {}", rawPayload);
+        log.info("Raw Payload Type: {}", rawPayload.getClass().getName());
+
+        // Identify the payload type
+        if (rawPayload instanceof String) {
+            log.info("Payload is a String.");
+        } else if (rawPayload instanceof Map) {
+            log.info("Payload is a Map.");
+        } else if (rawPayload instanceof JsonObject) {
+            log.info("Payload is a JsonObject.");
+        } else {
+            log.error("Unexpected Payload Type: {}", rawPayload.getClass().getName());
+        }
+
+    } catch (Exception e) {
+        log.error("Failed to identify payload", e);
+    }
+}
