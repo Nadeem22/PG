@@ -367,3 +367,27 @@ public interface ProductOrderRepository extends JpaRepository<ProductOrder, Stri
     @Query("SELECT po FROM ProductOrder po WHERE po.counterId = :counterId AND po.orderState = :orderState")
     ProductOrder findDraftOrderByCounterId(@Param("counterId") String counterId, @Param("orderState") String orderState);
 }
+!!!!!
+import com.google.gson.Gson;
+
+public class Main {
+    public static void main(String[] args) {
+        String payloadAsString = "{\"transactionId\":\"trans1\",\"isValid\":true}";
+
+        Gson gson = new Gson();
+        try {
+            StockRevokingResultModel stockRevokingResultModel = gson.fromJson(payloadAsString, StockRevokingResultModel.class);
+            System.out.println(stockRevokingResultModel);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+@Builder
+@Getter
+class StockRevokingResultModel {
+    private String transactionId;
+    private Boolean isValid;
+    private String errorMessage;
+}
