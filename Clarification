@@ -414,3 +414,41 @@ public void processMessage(CommonServiceBusMessage message) {
         log.error("Failed to identify payload", e);
     }
 }
+????
+@Override
+public void processMessage(CommonServiceBusMessage message) {
+    try {
+        // Extract the raw payload
+        Object rawPayload = message.getPayload();
+        log.info("Raw Payload: {}", rawPayload);
+        log.info("Raw Payload Type: {}", rawPayload.getClass().getName());
+
+        String payloadAsString = null;
+
+        // Handle different types of payload
+        if (rawPayload instanceof String) {
+            payloadAsString = (String) rawPayload;
+        } else if (rawPayload instanceof Map) {
+            // Convert Map to JSON string
+            payloadAsString = new Gson().toJson(rawPayload);
+        } else {
+            log.error("Unexpected Payload Type: {}", rawPayload.getClass().getName());
+            return;
+        }
+
+        log.debug("Payload as String: {}", payloadAsString);
+
+        // Parse JSON string into the model
+        StockRevokingResultModel stockRevokingResultModel = new Gson()
+            .fromJson(payloadAsString, StockRevokingResultModel.class);
+
+        // Process the parsed model
+        transactionSubmitService.setInventoryRevokingResult(stockRevokingResultModel);
+        log.info("Processed Inventory Revoking Result: [{}]",
+            Optional.ofNullable(stockRevokingResultModel)
+                .map(StockRevokingResultModel::getTransactionId)
+                .orElse(""));
+    } catch (Exception e) {
+        log.error("Failed to parse JSON string: {}", e.getMessage(), e);
+    }
+}
