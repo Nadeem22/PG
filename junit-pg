@@ -1,0 +1,149 @@
+package com.pg.sparc.market.jp.service.impl;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.quartz.JobExecutionException;
+
+import com.pg.sparc.common.ddp.model.DataLoadBaseConfiguation;
+import com.pg.sparc.entity.LoyalitySynchUpdateMetaData;
+import com.pg.sparc.entity.TransactionEntity;
+import com.pg.sparc.repository.CounterRepository;
+import com.pg.sparc.repository.LoyalitySynchUpdateMetaDataRepository;
+import com.pg.sparc.repository.TransactionRepository;
+
+@ExtendWith(MockitoExtension.class)
+class DDPLoyalitySynchUpdateSrviceImplTest {
+
+    @Mock
+    private LoyalitySynchUpdateMetaDataRepository loyalitySynchUpdateMetaDataRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private CounterRepository counterRepository;
+
+    @InjectMocks
+    private DDPLoyalitySynchUpdateSrviceImpl ddpLoyalitySynchUpdateSrvice;
+
+    private DataLoadBaseConfiguation conf;
+
+    @BeforeEach
+    void setUp() {
+        conf = new DataLoadBaseConfiguation();
+        conf.setExternalParams(Map.of(
+            "job-name", "TestJob",
+            "pilot-counter", "C1,C2",
+            "market-code", "M1"
+        ));
+    }
+
+    @Test
+    void testLoyalitySynchUpdateProcess_Success() throws JobExecutionException {
+        List<String> pilotCounterList = Arrays.asList("C1", "C2");
+        List<String> realCounterIds = Arrays.asList("ID1", "ID2");
+        LoyalitySynchUpdateMetaData metaData = new LoyalitySynchUpdateMetaData();
+        metaData.setLastRunTime(ZonedDateTime.now().minusDays(1));
+        List<TransactionEntity> transactionEntities = Arrays.asList(new TransactionEntity(), new TransactionEntity());
+
+        when(counterRepository.findIdsByCounterCodes(pilotCounterList)).thenReturn(realCounterIds);
+        when(loyalitySynchUpdateMetaDataRepository.findTopByJobNameOrderByLastRunTimeDesc("TestJob")).thenReturn(metaData);
+        when(transactionRepository.findByMarketCodeAndCounterNotInAndLastModifiedDateAfter(
+                "M1", realCounterIds, metaData.getLastRunTime())).thenReturn(transactionEntities);
+
+        ddpLoyalitySynchUpdateSrvice.loyalitySynchUpdateProcess(conf);
+
+        verify(counterRepository).findIdsByCounterCodes(pilotCounterList);
+        verify(loyalitySynchUpdateMetaDataRepository).findTopByJobNameOrderByLastRunTimeDesc("TestJob");
+        verify(transactionRepository).findByMarketCodeAndCounterNotInAndLastModifiedDateAfter("M1", realCounterIds, metaData.getLastRunTime());
+    }
+
+    @Test
+    void testLoyalitySynchUpdateProcess_FirstRun() throws JobExecutionException {
+        List<String> pilotCounterList = Arrays.asList("C1", "C2");
+        List<String> realCounterIds = Arrays.asList("ID1", "ID2");
+        List<TransactionEntity> transactionEntities = Arrays.asList(new TransactionEntity(), new TransactionEntity());
+
+        when(counterRepository.findIdsByCounterCodes(pilotCounterList)).thenReturn(realCounterIds);
+        when(loyalitySynchUpdateMetaDataRepository.findTopByJobNameOrderByLastRunTimeDesc("TestJob")).thenReturn(null);
+        when(transactionRepository.findByMarketCodeAndCounterNotIn("M1", realCounterIds)).thenReturn(transactionEntities);
+
+        ddpLoyalitySynchUpdateSrvice.loyalitySynchUpdateProcess(conf);
+
+        verify(counterRepository).findIdsByCounterCodes(pilotCounterList);
+        verify(loyalitySynchUpdateMetaDataRepository).findTopByJobNameOrderByLastRunTimeDesc("TestJob");
+        verify(transactionRepository).findByMarketCodeAndCounterNotIn("M1", realCounterIds);
+    }
+
+    @Test
+    void testGetRealCounterIds_EmptyInput() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            ddpLoyalitySynchUpdateSrvice.getRealCounterIds(Collections.emptyList());
+        });
+
+        assertEquals("Counter codes list cannot be null or empty", exception.getMessage());
+    }
+
+    @Test
+    void testSplitPilotCounterToList_ValidInput() {
+        String pilotCounter = "C1, C2, C3";
+        List<String> result = ddpLoyalitySynchUpdateSrvice.splitPilotCounterToList(pilotCounter);
+        assertEquals(Arrays.asList("C1", "C2", "C3"), result);
+    }
+
+    @Test
+    void testSplitPilotCounterToList_EmptyInput() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            ddpLoyalitySynchUpdateSrvice.splitPilotCounterToList("");
+        });
+
+        assertEquals("Input string can not be null or empty", exception.getMessage());
+    }
+
+    @Test
+    void testFetchNewRecords_LastRunTimeNull() {
+        String marketCode = "M1";
+        String jobName = "TestJob";
+        List<String> realCounterIds = Arrays.asList("ID1", "ID2");
+        List<TransactionEntity> transactionEntities = Arrays.asList(new TransactionEntity(), new TransactionEntity());
+
+        when(transactionRepository.findByMarketCodeAndCounterNotIn(marketCode, realCounterIds)).thenReturn(transactionEntities);
+
+        List<TransactionEntity> result = ddpLoyalitySynchUpdateSrvice.fetchNewRecords(jobName, marketCode, realCounterIds);
+
+        assertEquals(2, result.size());
+        verify(transactionRepository).findByMarketCodeAndCounterNotIn(marketCode, realCounterIds);
+    }
+
+    @Test
+    void testFetchNewRecords_WithLastRunTime() {
+        String marketCode = "M1";
+        String jobName = "TestJob";
+        List<String> realCounterIds = Arrays.asList("ID1", "ID2");
+        ZonedDateTime lastRunTime = ZonedDateTime.now().minusDays(1);
+        LoyalitySynchUpdateMetaData metaData = new LoyalitySynchUpdateMetaData();
+        metaData.setLastRunTime(lastRunTime);
+        List<TransactionEntity> transactionEntities = Arrays.asList(new TransactionEntity(), new TransactionEntity());
+
+        when(loyalitySynchUpdateMetaDataRepository.findTopByJobNameOrderByLastRunTimeDesc(jobName)).thenReturn(metaData);
+        when(transactionRepository.findByMarketCodeAndCounterNotInAndLastModifiedDateAfter(marketCode, realCounterIds, lastRunTime))
+                .thenReturn(transactionEntities);
+
+        List<TransactionEntity> result = ddpLoyalitySynchUpdateSrvice.fetchNewRecords(jobName, marketCode, realCounterIds);
+
+        assertEquals(2, result.size());
+        verify(transactionRepository).findByMarketCodeAndCounterNotInAndLastModifiedDateAfter(marketCode, realCounterIds, lastRunTime);
+    }
+} 
