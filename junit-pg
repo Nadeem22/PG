@@ -314,3 +314,132 @@ class DDPLoyalitySynchUpdateSrviceImplTest {
     }
 }
 ================================================================ 4
+
+package com.pg.sparc.market.jp.service.impl;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.ZonedDateTime;
+import java.util.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.pg.sparc.common.ddp.model.DataLoadBaseConfiguation;
+import com.pg.sparc.entity.LoyalitySynchUpdateMetaData;
+import com.pg.sparc.entity.TransactionEntity;
+import com.pg.sparc.entity.types.PerfTransactionType;
+import com.pg.sparc.repository.CounterRepository;
+import com.pg.sparc.repository.LoyalitySynchUpdateMetaDataRepository;
+import com.pg.sparc.repository.TransactionRepository;
+
+@ExtendWith(MockitoExtension.class)
+class DDPLoyalitySynchUpdateSrviceImplTest {
+
+    @Mock
+    private LoyalitySynchUpdateMetaDataRepository loyalitySynchUpdateMetaDataRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private CounterRepository counterRepository;
+
+    @InjectMocks
+    private DDPLoyalitySynchUpdateSrviceImpl ddpLoyalitySynchUpdateSrvice;
+
+    private DataLoadBaseConfiguation conf;
+
+    @BeforeEach
+    void setUp() {
+        Map<String, String> oldExtensionMap = new HashMap<>();
+        oldExtensionMap.put("job-name", "Job_LoyaltySyncUpdate");
+        oldExtensionMap.put("pilot-counter", "2000259959,2000259991");
+        oldExtensionMap.put("market-code", "hk");
+        conf = DataLoadBaseConfiguation.builder()
+                .externalParams(oldExtensionMap).build();
+    }
+
+    @Test
+    void testCategorizeTransactions_ValidInput() {
+        List<TransactionEntity> newRecords = Arrays.asList(
+                TransactionEntity.builder().id("1").perfTransactionType(PerfTransactionType.ORIGINAL_TRANSACTION).build(),
+                TransactionEntity.builder().id("2").perfTransactionType(PerfTransactionType.EDIT_TRANSACTION).build(),
+                TransactionEntity.builder().id("3").perfTransactionType(PerfTransactionType.OTHER_TRANSACTION).build(),
+                TransactionEntity.builder().id("4").perfTransactionType(PerfTransactionType.NEW_TRANSACTION_FOR_A_RETURN).build()
+        );
+
+        Map<PerfTransactionType, List<TransactionEntity>> result = ddpLoyalitySynchUpdateSrvice.categorizeTransactions(newRecords);
+
+        assertNotNull(result);
+        assertEquals(4, result.size());
+        assertEquals(1, result.get(PerfTransactionType.ORIGINAL_TRANSACTION).size());
+        assertEquals(1, result.get(PerfTransactionType.EDIT_TRANSACTION).size());
+        assertEquals(1, result.get(PerfTransactionType.OTHER_TRANSACTION).size());
+        assertEquals(1, result.get(PerfTransactionType.NEW_TRANSACTION_FOR_A_RETURN).size());
+    }
+
+    @Test
+    void testCategorizeTransactions_EmptyInput() {
+        List<TransactionEntity> newRecords = Collections.emptyList();
+
+        Map<PerfTransactionType, List<TransactionEntity>> result = ddpLoyalitySynchUpdateSrvice.categorizeTransactions(newRecords);
+
+        assertNotNull(result);
+        assertTrue(result.values().stream().allMatch(List::isEmpty));
+    }
+
+    @Test
+    void testCategorizeTransactions_NullInput() {
+        Map<PerfTransactionType, List<TransactionEntity>> result = ddpLoyalitySynchUpdateSrvice.categorizeTransactions(null);
+
+        assertNotNull(result);
+        assertTrue(result.values().stream().allMatch(List::isEmpty));
+    }
+
+    @Test
+    void testCategorizeTransactions_NullPerfTransactionType() {
+        List<TransactionEntity> newRecords = Arrays.asList(
+                TransactionEntity.builder().id("1").perfTransactionType(PerfTransactionType.ORIGINAL_TRANSACTION).build(),
+                TransactionEntity.builder().id("2").perfTransactionType(null).build()
+        );
+
+        Map<PerfTransactionType, List<TransactionEntity>> result = ddpLoyalitySynchUpdateSrvice.categorizeTransactions(newRecords);
+
+        assertNotNull(result);
+        assertEquals(1, result.get(PerfTransactionType.ORIGINAL_TRANSACTION).size());
+        assertTrue(result.get(PerfTransactionType.EDIT_TRANSACTION).isEmpty());
+        assertTrue(result.get(PerfTransactionType.OTHER_TRANSACTION).isEmpty());
+        assertTrue(result.get(PerfTransactionType.NEW_TRANSACTION_FOR_A_RETURN).isEmpty());
+    }
+
+    // Modify the following test to incorporate categorizeTransactions
+    @Test
+    void testLoyalitySynchUpdateProcess_Success() throws Exception {
+        List<String> pilotCounterList = Arrays.asList("2000259959", "2000259991");
+        List<String> realCounterIds = Arrays.asList("2000259959", "2000259991");
+        LoyalitySynchUpdateMetaData metaData = new LoyalitySynchUpdateMetaData();
+        metaData.setLastRunTime(ZonedDateTime.now().minusDays(1));
+        List<TransactionEntity> transactionEntities = Arrays.asList(
+                TransactionEntity.builder().id("1").perfTransactionType(PerfTransactionType.ORIGINAL_TRANSACTION).build(),
+                TransactionEntity.builder().id("2").perfTransactionType(PerfTransactionType.EDIT_TRANSACTION).build()
+        );
+
+        when(counterRepository.findIdsByCounterCodes(pilotCounterList)).thenReturn(realCounterIds);
+        when(loyalitySynchUpdateMetaDataRepository.findTopByJobNameOrderByLastRunTimeDesc("Job_LoyaltySyncUpdate")).thenReturn(metaData);
+        when(transactionRepository.findByMarketCodeAndCounterNotInAndLastModifiedDateAfter(
+                "hk", realCounterIds, metaData.getLastRunTime())).thenReturn(transactionEntities);
+
+        ddpLoyalitySynchUpdateSrvice.loyalitySynchUpdateProcess(conf);
+
+        verify(counterRepository).findIdsByCounterCodes(pilotCounterList);
+        verify(loyalitySynchUpdateMetaDataRepository).findTopByJobNameOrderByLastRunTimeDesc("Job_LoyaltySyncUpdate");
+        verify(transactionRepository).findByMarketCodeAndCounterNotInAndLastModifiedDateAfter("hk", realCounterIds, metaData.getLastRunTime());
+    }
+}
+
