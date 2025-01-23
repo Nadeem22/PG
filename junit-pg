@@ -147,3 +147,42 @@ class DDPLoyalitySynchUpdateSrviceImplTest {
         verify(transactionRepository).findByMarketCodeAndCounterNotInAndLastModifiedDateAfter(marketCode, realCounterIds, lastRunTime);
     }
 } 
+==========================================  2
+
+ public Map<PerfTransactionType, List<TransactionEntity>> categorizeTransactions(List<TransactionEntity> newRecords) {
+        Map<PerfTransactionType, List<TransactionEntity>> categorizedTransactions = new HashMap<>();
+
+        try {
+            if (newRecords == null || newRecords.isEmpty()) {
+                log.warn("The newRecords list is null or empty. Returning an empty map.");
+                return categorizedTransactions;
+            }
+
+            // Initialize the map with empty lists for each transaction type
+            for (PerfTransactionType type : PerfTransactionType.values()) {
+                categorizedTransactions.put(type, new ArrayList<>());
+            }
+
+            // Categorize transactions
+            newRecords.forEach(record -> {
+                PerfTransactionType transactionType = record.getPerfTransactionType();
+                if (transactionType != null) {
+                    categorizedTransactions.get(transactionType).add(record);
+                } else {
+                    log.warn("TransactionEntity with ID [{}] has a null PerfTransactionType.", record.getId());
+                }
+            });
+
+            log.info("Successfully categorized transactions. Summary: {}"," +
+                    categorizedTransactions.entrySet().stream()
+                            .map(entry -> entry.getKey() + ": " + entry.getValue().size())
+                            .collect(Collectors.joining(", ")));
+
+        } catch (Exception e) {
+            log.error("An error occurred while categorizing transactions: {}", e.getMessage(), e);
+            throw new RuntimeException("Error categorizing transactions", e);
+        }
+
+        return categorizedTransactions;
+    }
+===============================================3
