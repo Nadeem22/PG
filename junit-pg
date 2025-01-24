@@ -763,3 +763,143 @@ public OrderTransactionDto prepareSendCompletedOrderList(TransactionModel transa
     return loyaltyDto;
 }
 ====================================================================================  10
+
+OrderTransactionDto sendRefundedOrder(TransactionModel returnTransaction, CounterEntity counterEntity, String marketCode) {
+    log.info("Starting to process refunded order for return transaction ID: {} and marketCode: {}", returnTransaction.getId(), marketCode);
+    OrderTransactionDto orderLoyalty = null;
+
+    try {
+        // Get the original transaction
+        TransactionModel mainTransaction = getOriginalTransaction(returnTransaction);
+        if (Objects.isNull(mainTransaction)) {
+            log.warn("Original transaction not found for return transaction ID: {}", returnTransaction.getId());
+            return null;
+        }
+
+        // Get consumer details
+        ConsumerDetailDto consumer = amProxyService.getUserByConsumerId(returnTransaction.getMemberId()).orElse(null);
+        if (!isOneStatusConsumer(returnTransaction.getMemberId(), consumer)) {
+            log.warn("Consumer does not have valid ONE status for return transaction ID: {}", returnTransaction.getId());
+            return null;
+        }
+
+        // Get the purchase transaction
+        TransactionModel purchaseTransaction = getPurchaseTransaction(returnTransaction);
+        boolean isSendToLoyalty = getResultIsSendToLoyalty(consumer);
+
+        // Map to OrderTransactionDto
+        orderLoyalty = refundedMapper.toDto(
+            returnTransaction, purchaseTransaction, mainTransaction, counterEntity, false, isSendToLoyalty, marketCode);
+
+        // Populate campaign details
+        populateCampaignDetails(returnTransaction, orderLoyalty, marketCode);
+
+    } catch (Exception e) {
+        log.error("Error while processing refunded order for return transaction ID: {}: {}", returnTransaction.getId(), e.getMessage(), e);
+        throw new RuntimeException("Error processing refunded order for return transaction ID: " + returnTransaction.getId(), e);
+    }
+
+    log.info("Successfully processed refunded order for return transaction ID: {}", returnTransaction.getId());
+    return orderLoyalty;
+}
+
+private void populateCampaignDetails(TransactionModel returnTransaction, OrderTransactionDto orderLoyalty, String marketCode) {
+    try {
+        List<String> campaignIds = returnTransaction.getTransactionCampaigns().stream()
+            .map(TransactionCampaignModel::getCampaignId)
+            .collect(Collectors.toList());
+        List<CampaignBasicDetailModel> campaignDetails = campaignService.getCampaignDetails(campaignIds, marketCode, LanguageCode.EN);
+
+        List<CampaignDto> campaignDtoList = orderLoyalty.getCampaignList();
+        if (campaignDtoList != null && !campaignDtoList.isEmpty()) {
+            Map<String, CampaignBasicDetailModel> campaignDetailMap = campaignDetails.stream()
+                .collect(Collectors.toMap(CampaignBasicDetailModel::getCampaignId, model -> model));
+
+            campaignDtoList.forEach(campaignDto -> {
+                CampaignBasicDetailModel detailModel = campaignDetailMap.get(campaignDto.getCampaignId());
+                if (detailModel != null) {
+                    campaignDto.setCampaignName(detailModel.getCampaignName());
+                    campaignDto.setCampaignCode(detailModel.getCampaignCode());
+                    log.debug("Updated campaign DTO with ID: {} with name: {} and code: {}", 
+                              campaignDto.getCampaignId(), detailModel.getCampaignName(), detailModel.getCampaignCode());
+                } else {
+                    log.warn("No details found for campaign ID: {} in return transaction ID: {}", campaignDto.getCampaignId(), returnTransaction.getId());
+                }
+            });
+        } else {
+            log.warn("No campaign DTOs found for return transaction ID: {}", returnTransaction.getId());
+        }
+    } catch (Exception e) {
+        log.error("Error populating campaign details for return transaction ID: {}: {}", returnTransaction.getId(), e.getMessage(), e);
+        throw new RuntimeException("Error populating campaign details for return transaction ID: " + returnTransaction.getId(), e);
+    }
+}
+
+TransactionModel getOriginalTransaction(TransactionModel returnTransaction) {
+    log.debug("Fetching original transaction for return transaction ID: {}", returnTransaction.getId());
+    try {
+        String originalTransactionId = returnTransaction.getProperties()
+            .get(TransactionPropertyItemKeyType.EXT_ORIGINAL_TRANSACTION_ID.getValue());
+        if (Strings.isNotBlank(originalTransactionId)) {
+            return transactionRepository.findById(originalTransactionId)
+                .map(transactionMapper::entityToModel)
+                .orElse(null);
+        }
+    } catch (Exception e) {
+        log.error("Error fetching original transaction for return transaction ID: {}: {}", returnTransaction.getId(), e.getMessage(), e);
+    }
+    return null;
+}
+
+private boolean isOneStatusConsumer(String memberId, final ConsumerDetailDto consumer) {
+    try {
+        if (consumer == null || consumer.getBasic() == null || 
+            !StringUtils.equals(consumer.getBasic().getConsumerOneIdStatus(), ONE)) {
+            log.warn(MSG_CONSUMER_ONE_ID_STATUS, memberId);
+            return false;
+        }
+    } catch (Exception e) {
+        log.error("Error validating ONE status for member ID: {}: {}", memberId, e.getMessage(), e);
+        return false;
+    }
+    return true;
+}
+
+private TransactionModel getPurchaseTransaction(TransactionModel returnTransaction) {
+    log.debug("Fetching purchase transaction for return transaction ID: {}", returnTransaction.getId());
+    try {
+        String purchaseTransactionId = returnTransaction.getProperties()
+            .get(TransactionPropertyItemKeyType.EXT_PURCHASE_TRANSACTION_ID.getValue());
+
+        if (Strings.isNotBlank(purchaseTransactionId)) {
+            return transactionRepository.findById(purchaseTransactionId)
+                .map(transactionMapper::entityToModel)
+                .orElse(null);
+        }
+    } catch (Exception e) {
+        log.error("Error fetching purchase transaction for return transaction ID: {}: {}", returnTransaction.getId(), e.getMessage(), e);
+    }
+    return null;
+}
+
+boolean getResultIsSendToLoyalty(ConsumerDetailDto vipDetail) {
+    log.debug("Determining if the transaction should be sent to loyalty for consumer ID: {}", 
+              vipDetail != null ? vipDetail.getBasic().getConsumerId() : "null");
+    boolean isSendToLoyalty = true;
+    try {
+        if (vipDetail == null || vipDetail.getBinds() == null || vipDetail.getSubscription() == null ||
+            vipDetail.getBinds().isEmpty() ||
+            vipDetail.getBinds().stream().noneMatch(bind -> BIND_TYPE_VALUE.equalsIgnoreCase(bind.getBindType())) ||
+            !YES_VALUE.equalsIgnoreCase(vipDetail.getBinds().get(0).getAttentionStatus()) ||
+            !YES_VALUE.equalsIgnoreCase(vipDetail.getSubscription().getSubscriptionStatus()) ||
+            !CODE_VALUE.equalsIgnoreCase(vipDetail.getSubscription().getSubscriptionCode())) {
+            isSendToLoyalty = false;
+        }
+    } catch (Exception e) {
+        log.error("Error determining loyalty eligibility for consumer ID: {}: {}", 
+                  vipDetail != null ? vipDetail.getBasic().getConsumerId() : "null", e.getMessage(), e);
+        isSendToLoyalty = false;
+    }
+    return isSendToLoyalty;
+}
+
