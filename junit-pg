@@ -586,3 +586,123 @@ public class TransactionConversionService {
         }
     }
 }
+====================================================================================== 7
+
+private Map<PerfTransactionType, List<OrderTransactionDto>> processCategorizedTransactions(Map<PerfTransactionType, List<TransactionEntity>> categorizedTransactions, String marketCode) {
+    log.info("Starting to process categorized transactions for marketCode: {}", marketCode);
+
+    Map<PerfTransactionType, List<OrderTransactionDto>> result = new HashMap<>();
+
+    try {
+        if (categorizedTransactions == null || categorizedTransactions.isEmpty()) {
+            log.warn("The categorizedTransactions map is null or empty. No processing will be performed.");
+            return Collections.emptyMap();
+        }
+
+        for (Map.Entry<PerfTransactionType, List<TransactionEntity>> entry : categorizedTransactions.entrySet()) {
+            PerfTransactionType transactionType = entry.getKey();
+            List<TransactionEntity> transactionEntities = entry.getValue();
+
+            if (transactionEntities == null || transactionEntities.isEmpty()) {
+                log.warn("No transactions found for transaction type: {}. Skipping processing.", transactionType);
+                result.put(transactionType, Collections.emptyList());
+                continue;
+            }
+
+            List<OrderTransactionDto> processedTransactions;
+            switch (transactionType) {
+                case ORIGINAL_TRANSACTION:
+                    processedTransactions = processOriginalTransactions(transactionEntities, marketCode);
+                    break;
+                case OTHER_TRANSACTION:
+                    processedTransactions = processReturnTransactions(transactionEntities, marketCode);
+                    break;
+                case NEW_TRANSACTION_FOR_A_RETURN:
+                    processedTransactions = processNewPurchaseTransactions(transactionEntities, marketCode);
+                    break;
+                case EDIT_TRANSACTION:
+                    processedTransactions = processEditTransactions(transactionEntities, marketCode);
+                    break;
+                default:
+                    log.warn("Unhandled transaction type: {}. No processing defined for this type.", transactionType);
+                    processedTransactions = Collections.emptyList();
+            }
+            result.put(transactionType, processedTransactions);
+        }
+    } catch (Exception e) {
+        log.error("An error occurred while processing categorized transactions: {}", e.getMessage(), e);
+        throw new RuntimeException("Error processing categorized transactions", e);
+    }
+
+    log.info("Finished processing categorized transactions for marketCode: {}", marketCode);
+    return result;
+}
+
+private List<OrderTransactionDto> processOriginalTransactions(List<TransactionEntity> transactionEntities, String marketCode) {
+    log.info("Processing ORIGINAL transactions. MarketCode: {}, Count: {}", marketCode, transactionEntities.size());
+    List<TransactionModel> originalTransactionList = convertEntitiesToModels(transactionEntities);
+    List<OrderTransactionDto> listOfLoyaltyDto = new ArrayList<>();
+    try {
+        for (TransactionModel transaction : originalTransactionList) {
+            log.debug("Processing transaction ID: {} for ORIGINAL", transaction.getId());
+            OrderTransactionDto loyaltyDto = prepareSendCompletedOrderList(transaction, getCounterByTransaction(transaction), marketCode);
+            listOfLoyaltyDto.add(loyaltyDto);
+        }
+        handler.sendMessageCommonService(listOfLoyaltyDto, BusinessType.ORDER_COMPLETED_DATA, marketCode, LANGUAGE_CODE_EN);
+    } catch (Exception e) {
+        log.error("Error processing ORIGINAL transactions: {}", e.getMessage(), e);
+        throw new RuntimeException("Error processing ORIGINAL transactions", e);
+    }
+    return listOfLoyaltyDto;
+}
+
+private List<OrderTransactionDto> processReturnTransactions(List<TransactionEntity> transactionEntities, String marketCode) {
+    log.info("Processing RETURN transactions. MarketCode: {}, Count: {}", marketCode, transactionEntities.size());
+    List<TransactionModel> returnTransactionList = convertEntitiesToModels(transactionEntities);
+    List<OrderTransactionDto> listOfLoyaltyDto = new ArrayList<>();
+    try {
+        for (TransactionModel transaction : returnTransactionList) {
+            log.debug("Processing transaction ID: {} for RETURN", transaction.getId());
+            OrderTransactionDto loyaltyDto = prepareSendCompletedOrderList(transaction, getCounterByTransaction(transaction), marketCode);
+            listOfLoyaltyDto.add(loyaltyDto);
+        }
+    } catch (Exception e) {
+        log.error("Error processing RETURN transactions: {}", e.getMessage(), e);
+        throw new RuntimeException("Error processing RETURN transactions", e);
+    }
+    return listOfLoyaltyDto;
+}
+
+private List<OrderTransactionDto> processNewPurchaseTransactions(List<TransactionEntity> transactionEntities, String marketCode) {
+    log.info("Processing NEW_PURCHASE transactions. MarketCode: {}, Count: {}", marketCode, transactionEntities.size());
+    List<TransactionModel> newPurchaseTransactionList = convertEntitiesToModels(transactionEntities);
+    List<OrderTransactionDto> listOfLoyaltyDto = new ArrayList<>();
+    try {
+        for (TransactionModel transaction : newPurchaseTransactionList) {
+            log.debug("Processing transaction ID: {} for NEW_PURCHASE", transaction.getId());
+            OrderTransactionDto loyaltyDto = prepareSendCompletedOrderList(transaction, getCounterByTransaction(transaction), marketCode);
+            listOfLoyaltyDto.add(loyaltyDto);
+        }
+    } catch (Exception e) {
+        log.error("Error processing NEW_PURCHASE transactions: {}", e.getMessage(), e);
+        throw new RuntimeException("Error processing NEW_PURCHASE transactions", e);
+    }
+    return listOfLoyaltyDto;
+}
+
+private List<OrderTransactionDto> processEditTransactions(List<TransactionEntity> transactionEntities, String marketCode) {
+    log.info("Processing EDIT transactions. MarketCode: {}, Count: {}", marketCode, transactionEntities.size());
+    List<TransactionModel> editTransactionList = convertEntitiesToModels(transactionEntities);
+    List<OrderTransactionDto> listOfLoyaltyDto = new ArrayList<>();
+    try {
+        for (TransactionModel transaction : editTransactionList) {
+            log.debug("Processing transaction ID: {} for EDIT", transaction.getId());
+            OrderTransactionDto loyaltyDto = prepareSendCompletedOrderList(transaction, getCounterByTransaction(transaction), marketCode);
+            listOfLoyaltyDto.add(loyaltyDto);
+        }
+    } catch (Exception e) {
+        log.error("Error processing EDIT transactions: {}", e.getMessage(), e);
+        throw new RuntimeException("Error processing EDIT transactions", e);
+    }
+    return listOfLoyaltyDto;
+}
