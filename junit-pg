@@ -540,3 +540,49 @@ private void processEditTransactions(List<TransactionEntity> transactionEntities
         throw new RuntimeException("Error processing EDIT transactions", e);
     }
 }
+===================================================== 6
+
+@Slf4j
+@Service
+public class TransactionConversionService {
+
+    private final TransactionEntityModelMapper transactionEntityModelMapper;
+
+    public TransactionConversionService(TransactionEntityModelMapper transactionEntityModelMapper) {
+        this.transactionEntityModelMapper = transactionEntityModelMapper;
+    }
+
+    /**
+     * Converts a list of TransactionEntity to TransactionModel sequentially.
+     *
+     * @param transactionEntities List of TransactionEntity
+     * @return List of TransactionModel
+     */
+    public List<TransactionModel> convertEntitiesToModels(List<TransactionEntity> transactionEntities) {
+        if (transactionEntities == null || transactionEntities.isEmpty()) {
+            log.warn("Received empty or null list of TransactionEntity.");
+            return Collections.emptyList();
+        }
+
+        log.info("Starting conversion of {} TransactionEntity objects to TransactionModel.", transactionEntities.size());
+
+        try {
+            return transactionEntities.stream() // Sequential processing
+                    .map(entity -> {
+                        try {
+                            log.debug("Converting TransactionEntity with ID: {}", entity.getId());
+                            return transactionEntityModelMapper.entityToModel(entity);
+                        } catch (Exception e) {
+                            log.error("Error while converting TransactionEntity with ID: {}", entity.getId(), e);
+                            throw new RuntimeException("Conversion failed for TransactionEntity ID: " + entity.getId(), e);
+                        }
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Critical error during conversion of TransactionEntity to TransactionModel.", e);
+            throw new RuntimeException("Failed to convert TransactionEntity to TransactionModel.", e);
+        } finally {
+            log.info("Completed conversion of TransactionEntity to TransactionModel.");
+        }
+    }
+}
