@@ -999,4 +999,46 @@ List<OrderTransactionDto> processOriginalTransactions(List<TransactionEntity> tr
 
     return loyaltyDto;
 }
+==================================================================== 13
+List<OrderTransactionDto> processReturnTransactions(List<TransactionEntity> transactionEntities, String marketCode) {
+    log.info("Processing RETURN transactions. MarketCode: {}, Count: {}", marketCode, transactionEntities.size());
+
+    // Validate input
+    if (transactionEntities == null || transactionEntities.isEmpty()) {
+        log.warn("Received null or empty transactionEntities list for RETURN transactions in marketCode: {}", marketCode);
+        return Collections.emptyList();
+    }
+
+    List<TransactionModel> returnTransactionList = convertEntitiesToModels(transactionEntities);
+    if (returnTransactionList == null || returnTransactionList.isEmpty()) {
+        log.warn("Converted transactionEntities to an empty or null returnTransactionList for marketCode: {}", marketCode);
+        return Collections.emptyList();
+    }
+
+    List<OrderTransactionDto> listOfLoyalityDto = new ArrayList<>();
+
+    try {
+        for (TransactionModel transaction : returnTransactionList) {
+            try {
+                log.debug("Processing transaction ID: {} for RETURN", transaction.getId());
+                OrderTransactionDto loyalityDto = sendRefundedOrder(transaction, getCounterByTransaction(transaction), marketCode);
+
+                if (loyalityDto != null) {
+                    listOfLoyalityDto.add(loyalityDto);
+                } else {
+                    log.warn("Failed to prepare OrderTransactionDto for transaction ID: {}", transaction.getId());
+                }
+            } catch (Exception ex) {
+                log.error("Error processing transaction ID: {} for RETURN: {}", transaction.getId(), ex.getMessage(), ex);
+            }
+        }
+
+        log.info("Successfully processed {} RETURN transactions for marketCode: {}", listOfLoyalityDto.size(), marketCode);
+    } catch (Exception e) {
+        log.error("Critical error while processing RETURN transactions for marketCode: {}: {}", marketCode, e.getMessage(), e);
+        throw new RuntimeException("Error processing RETURN transactions for marketCode: " + marketCode, e);
+    }
+
+    return listOfLoyalityDto;
+}
 
