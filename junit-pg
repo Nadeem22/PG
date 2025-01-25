@@ -954,6 +954,48 @@ OrderTransactionDto sendEditedOrder(TransactionModel editedTransaction, CounterE
         log.error("Error while processing edited order for transaction ID: {}: {}", editedTransaction.getId(), e.getMessage(), e);
         throw new RuntimeException("Error processing edited order for transaction ID: " + editedTransaction.getId(), e);
     }
+================================================================ 12
+List<OrderTransactionDto> processOriginalTransactions(List<TransactionEntity> transactionEntities, String marketCode) {
+    log.info("Processing ORIGINAL transactions. MarketCode: {}, Count: {}", marketCode, transactionEntities.size());
+
+    // Validate input
+    if (transactionEntities == null || transactionEntities.isEmpty()) {
+        log.warn("Received null or empty transactionEntities list for marketCode: {}", marketCode);
+        return Collections.emptyList();
+    }
+
+    List<TransactionModel> originalTransactionList = convertEntitiesToModels(transactionEntities);
+    if (originalTransactionList == null || originalTransactionList.isEmpty()) {
+        log.warn("Converted transactionEntities to an empty or null originalTransactionList for marketCode: {}", marketCode);
+        return Collections.emptyList();
+    }
+
+    List<OrderTransactionDto> listOfLoyalityDto = new ArrayList<>();
+
+    try {
+        for (TransactionModel transaction : originalTransactionList) {
+            try {
+                log.debug("Processing transaction ID: {} for ORIGINAL", transaction.getId());
+                OrderTransactionDto loyalityDto = prepareSendCompletedOrderList(transaction, getCounterByTransaction(transaction), marketCode);
+
+                if (loyalityDto != null) {
+                    listOfLoyalityDto.add(loyalityDto);
+                } else {
+                    log.warn("Failed to prepare OrderTransactionDto for transaction ID: {}", transaction.getId());
+                }
+            } catch (Exception ex) {
+                log.error("Error processing transaction ID: {} for ORIGINAL: {}", transaction.getId(), ex.getMessage(), ex);
+            }
+        }
+
+        log.info("Successfully processed {} ORIGINAL transactions for marketCode: {}", listOfLoyalityDto.size(), marketCode);
+    } catch (Exception e) {
+        log.error("Critical error while processing ORIGINAL transactions for marketCode: {}: {}", marketCode, e.getMessage(), e);
+        throw new RuntimeException("Error processing ORIGINAL transactions for marketCode: " + marketCode, e);
+    }
+
+    return listOfLoyalityDto;
+}
 
     return loyaltyDto;
 }
