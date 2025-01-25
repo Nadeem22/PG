@@ -902,4 +902,59 @@ boolean getResultIsSendToLoyalty(ConsumerDetailDto vipDetail) {
     }
     return isSendToLoyalty;
 }
+====================================================================== 11
+OrderTransactionDto sendEditedOrder(TransactionModel editedTransaction, CounterEntity counterEntity, String marketCode) {
+    log.info("Starting to process edited order for transaction ID: {} and marketCode: {}", editedTransaction.getId(), marketCode);
+    OrderTransactionDto loyaltyDto;
+
+    try {
+        // Map the edited transaction and counter entity to DTO
+        loyaltyDto = completedMapper.toDto(editedTransaction, counterEntity, marketCode);
+        log.debug("Successfully mapped transaction ID: {} to OrderTransactionDto", editedTransaction.getId());
+
+        // Extract campaign IDs
+        List<String> campaignIds = editedTransaction.getTransactionCampaigns().stream()
+            .map(TransactionCampaignModel::getCampaignId)
+            .collect(Collectors.toList());
+        log.debug("Extracted campaign IDs: {} for transaction ID: {}", campaignIds, editedTransaction.getId());
+
+        // Fetch campaign details
+        List<CampaignBasicDetailModel> campaignDetails = campaignService.getCampaignDetails(campaignIds, marketCode, LanguageCode.EN);
+        log.debug("Fetched campaign details for transaction ID: {}", editedTransaction.getId());
+
+        // Populate campaign names and codes in the DTO
+        List<CampaignDto> campaignDtoList = loyaltyDto.getCampaignList();
+        if (campaignDtoList != null && !campaignDtoList.isEmpty()) {
+            Map<String, CampaignBasicDetailModel> campaignDetailMap = campaignDetails.stream()
+                .collect(Collectors.toMap(CampaignBasicDetailModel::getCampaignId, model -> model));
+
+            campaignDtoList.forEach(campaignDto -> {
+                CampaignBasicDetailModel detailModel = campaignDetailMap.get(campaignDto.getCampaignId());
+                if (detailModel != null) {
+                    campaignDto.setCampaignName(detailModel.getCampaignName());
+                    campaignDto.setCampaignCode(detailModel.getCampaignCode());
+                    log.debug("Updated campaign DTO with ID: {} with name: {} and code: {}", 
+                              campaignDto.getCampaignId(), detailModel.getCampaignName(), detailModel.getCampaignCode());
+                } else {
+                    log.warn("No details found for campaign ID: {} in transaction ID: {}", campaignDto.getCampaignId(), editedTransaction.getId());
+                }
+            });
+        } else {
+            log.warn("No campaign DTOs found for transaction ID: {}", editedTransaction.getId());
+        }
+
+        // Set additional fields in the DTO
+        loyaltyDto.setPurchaseUpdateDate(ZonedDateTime.now()
+            .withZoneSameInstant(ZoneId.systemDefault())
+            .format(TimeUtil.PURCHASE_UPDATE_DATE_FORMAT_FOR_LOYALTY));
+        loyaltyDto.setEventType(BusinessType.ORDER_EDIT_COMPLETED_DATA.getCode());
+
+        log.info("Successfully processed edited order for transaction ID: {}", editedTransaction.getId());
+    } catch (Exception e) {
+        log.error("Error while processing edited order for transaction ID: {}: {}", editedTransaction.getId(), e.getMessage(), e);
+        throw new RuntimeException("Error processing edited order for transaction ID: " + editedTransaction.getId(), e);
+    }
+
+    return loyaltyDto;
+}
 
