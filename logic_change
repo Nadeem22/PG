@@ -1,0 +1,75 @@
+List<OrderTransactionDto> sendRefundedOrders(
+        List<TransactionModel> listReturnTransactions, List<CounterEntity> listCounterEntities, String marketCode) {
+
+    log.info("Starting to process refunded orders for marketCode: {}", marketCode);
+    List<OrderTransactionDto> orderLoyaltys = new ArrayList<>();
+
+    try {
+        // Validate input lists
+        if (listReturnTransactions == null || listReturnTransactions.isEmpty()) {
+            log.warn("No return transactions provided for processing.");
+            return Collections.emptyList();
+        }
+        if (listCounterEntities == null || listCounterEntities.isEmpty()) {
+            log.warn("No counter entities provided for processing.");
+            return Collections.emptyList();
+        }
+
+        // Extract member IDs from return transactions
+        List<String> memberIds = listReturnTransactions.stream()
+                .map(TransactionModel::getMemberId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Fetch consumer details for the extracted member IDs
+        Map<String, ConsumerDetailDto> consumerDetailsMap = fetchConsumersByMemberIds(memberIds);
+
+        // Process each return transaction
+        for (TransactionModel returnTransaction : listReturnTransactions) {
+            CounterEntity counterEntity = findCounterEntityById(listCounterEntities, returnTransaction.getCounterId());
+            if (counterEntity == null) {
+                log.warn("No counter entity found for transaction ID: {}", returnTransaction.getId());
+                continue;
+            }
+
+            // Get the original transaction
+            TransactionModel mainTransaction = getOriginalTransaction(returnTransaction);
+            if (Objects.isNull(mainTransaction)) {
+                log.warn("Original transaction not found for return transaction ID: {}", returnTransaction.getId());
+                continue;
+            }
+
+            // Get consumer details
+            ConsumerDetailDto consumer = consumerDetailsMap.get(returnTransaction.getMemberId());
+            if (!isOneStatusConsumer(returnTransaction.getMemberId(), consumer)) {
+                log.warn("Consumer does not have valid ONE status for return transaction ID: {}", returnTransaction.getId());
+                continue;
+            }
+
+            // Get the purchase transaction
+            TransactionModel purchaseTransaction = getPurchaseTransaction(returnTransaction);
+            boolean isSendToLoyalty = getResultIsSendToLoyalty(consumer);
+
+            // Map to OrderTransactionDto
+            try {
+                OrderTransactionDto orderLoyalty = refundedMapper.toDto(
+                        returnTransaction, purchaseTransaction, mainTransaction, counterEntity, false, isSendToLoyalty, marketCode);
+
+                // Populate campaign details
+                populateCampaignDetails(returnTransaction, orderLoyalty, marketCode);
+
+                // Add to the list of processed DTOs
+                orderLoyaltys.add(orderLoyalty);
+            } catch (Exception e) {
+                log.error("Error while processing refunded order for return transaction ID: {}: {}", returnTransaction.getId(), e.getMessage(), e);
+            }
+        }
+    } catch (Exception e) {
+        log.error("Error while processing refunded orders for marketCode: {}: {}", marketCode, e.getMessage(), e);
+        throw new RuntimeException("Error processing refunded orders for marketCode: " + marketCode, e);
+    }
+
+    log.info("Successfully processed {} refunded orders for marketCode: {}", orderLoyaltys.size(), marketCode);
+    return orderLoyaltys;
+}
