@@ -1,0 +1,57 @@
+void processLoyaltyCategorizedTransactions(Map<PerfTransactionType, List<OrderTransactionDto>> loyalityCategorizedTransactionList, String marketCode) {
+    log.info("Starting to process categorized loyalty transactions.");
+
+    if (loyalityCategorizedTransactionList == null || loyalityCategorizedTransactionList.isEmpty()) {
+        log.warn("The loyalityCategorizedTransactionList map is null or empty. No processing will be performed.");
+        return;
+    }
+
+    loyalityCategorizedTransactionList.forEach((transactionType, transactionList) -> {
+        try {
+            if (transactionList == null || transactionList.isEmpty()) {
+                log.warn("No transactions found for transaction type: {}. Skipping processing.", transactionType);
+                return;
+            }
+
+            log.info("Processing {} transactions for transaction type: {}.", transactionList.size(), transactionType);
+
+            for (OrderTransactionDto transactionDto : transactionList) {
+                try {
+                    log.debug("Processing transaction ID: {} for transaction type: {}.", transactionDto.getTransactionId(), transactionType);
+
+                    // Check transaction type and send to appropriate handler
+                    if (transactionType == PerfTransactionType.ORIGINAL_TRANSACTION || transactionType == PerfTransactionType.EDIT_TRANSACTION) {
+                        handler.sendMessageCommonService(transactionDto, BusinessType.ORDER_COMPLETED_DATA, marketCode, LANGUAGE_CODE_EN);
+                        log.info("Sent transaction ID: {} to ORDER_COMPLETED_DATA handler for transaction type: {}.", transactionDto.getTransactionId(), transactionType);
+                    } else if (transactionType == PerfTransactionType.OTHER_TRANSACTION) {
+                        handler.sendMessageCommonService(transactionDto, BusinessType.ORDER_COMPLETED_DATA, marketCode, LANGUAGE_CODE_EN);
+                        log.info("Sent transaction ID: {} to ORDER_COMPLETED_DATA handler for RETURN transaction type.", transactionDto.getTransactionId());
+                    } else if (transactionType == PerfTransactionType.NEW_TRANSACTION_FOR_A_RETURN) {
+                        log.info("Skipping NEW_PURCHASE transaction type for transaction ID: {}.", transactionDto.getTransactionId());
+                    } else {
+                        sendToConnectorService(transactionDto);
+                        log.info("Sent transaction ID: {} to connector service for transaction type: {}.", transactionDto.getTransactionId(), transactionType);
+                    }
+
+                } catch (Exception e) {
+                    log.error("Error processing transaction ID: {} for transaction type: {}: {}", 
+                              transactionDto.getTransactionId(), transactionType, e.getMessage(), e);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error processing transactions for transaction type: {}: {}", transactionType, e.getMessage(), e);
+        }
+    });
+
+    log.info("Finished processing categorized loyalty transactions.");
+}
+
+private void sendToConnectorService(OrderTransactionDto transactionDto) {
+    // Placeholder for sending transaction to connector service
+    // Add your implementation for sending the transaction to the external service here
+    log.debug("Sending transaction ID: {} to external connector service.", transactionDto.getTransactionId());
+
+    // Example implementation
+    // connectorService.send(transactionDto);
+}
