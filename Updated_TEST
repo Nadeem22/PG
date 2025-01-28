@@ -1,0 +1,155 @@
+package com.pg.sparc.market.jp.service.impl;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.ZonedDateTime;
+import java.util.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.pg.sparc.entity.*;
+import com.pg.sparc.entity.types.*;
+import com.pg.sparc.mapper.TransactionEntityModelMapper;
+import com.pg.sparc.mapper.messaging.OrderCompletedMapper;
+import com.pg.sparc.mapper.messaging.OrderRefundedMapper;
+import com.pg.sparc.model.*;
+import com.pg.sparc.repository.*;
+
+@ExtendWith(MockitoExtension.class)
+class DDPLoyalitySynchUpdateSrviceImplTest {
+
+    @Mock
+    private LoyalitySynchUpdateMetaDataRepository loyalitySynchUpdateMetaDataRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private CounterRepository counterRepository;
+
+    @Mock
+    private TransactionEntityModelMapper transactionEntityModelMapper;
+
+    @Mock
+    private OrderCompletedMapper completedMapper;
+
+    @Mock
+    private OrderRefundedMapper refundedMapper;
+
+    @InjectMocks
+    private DDPLoyalitySynchUpdateSrviceImpl service;
+
+    private DataLoadBaseConfiguation conf;
+
+    @BeforeEach
+    void setUp() {
+        Map<String, String> externalParams = new HashMap<>();
+        externalParams.put("job-name", "Job_LoyaltySyncUpdate");
+        externalParams.put("pilot-counter", "2000259959,2000259991");
+        externalParams.put("market-code", "hk");
+
+        conf = DataLoadBaseConfiguation.builder()
+                .externalParams(externalParams)
+                .build();
+    }
+
+    @Test
+    void testGetResultIsSendToLoyalty_Valid() {
+        ConsumerDetailDto consumerDetailDto = new ConsumerDetailDto();
+        ConsumerDetailDto.Subscription subscription = new ConsumerDetailDto.Subscription("now", "yes");
+        consumerDetailDto.setSubscription(subscription);
+        consumerDetailDto.setBinds(Arrays.asList(new ConsumerDetailDto.Bind("line", "yes")));
+
+        boolean result = service.getResultIsSendToLoyalty(consumerDetailDto);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void testIsOneStatusConsumer_Valid() {
+        ConsumerDetailDto consumerDetailDto = new ConsumerDetailDto();
+        ConsumerDetailDto.BasicDetail basicDetail = new ConsumerDetailDto.BasicDetail();
+        basicDetail.setConsumerOneIdStatus("1");
+        consumerDetailDto.setBasic(basicDetail);
+
+        boolean result = service.isOneStatusConsumer("1", consumerDetailDto);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void testGetPurchaseTransaction_Success() {
+        TransactionModel transactionModel = new TransactionModel();
+        transactionModel.setProperties(Collections.singletonMap("EXT_PURCHASE_TRANSACTION_ID", "T1"));
+
+        TransactionEntity transactionEntity = new TransactionEntity();
+        when(transactionRepository.findById("T1")).thenReturn(Optional.of(transactionEntity));
+        when(transactionEntityModelMapper.entityToModel(transactionEntity)).thenReturn(new TransactionModel());
+
+        TransactionModel result = service.getPurchaseTransaction(transactionModel);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testPrepareSendCompletedOrderList_Success() {
+        TransactionModel transactionModel = new TransactionModel();
+        transactionModel.setId("T1");
+        CounterEntity counterEntity = new CounterEntity();
+        counterEntity.setId("C1");
+        OrderTransactionDto dto = new OrderTransactionDto();
+
+        when(completedMapper.toDto(transactionModel, counterEntity, "hk")).thenReturn(dto);
+
+        OrderTransactionDto result = service.prepareSendCompletedOrderList(transactionModel, counterEntity, "hk");
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testSendRefundedOrder_Success() {
+        TransactionModel returnTransaction = new TransactionModel();
+        returnTransaction.setId("R1");
+        CounterEntity counterEntity = new CounterEntity();
+        TransactionModel originalTransaction = new TransactionModel();
+        OrderTransactionDto dto = new OrderTransactionDto();
+
+        when(service.getOriginalTransaction(returnTransaction)).thenReturn(originalTransaction);
+        when(refundedMapper.toDto(any(), any(), any(), any(), anyBoolean(), anyBoolean(), eq("hk"))).thenReturn(dto);
+
+        OrderTransactionDto result = service.sendRefundedOrder(returnTransaction, counterEntity, "hk");
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testProcessCategorizedTransactions_Success() {
+        Map<PerfTransactionType, List<TransactionEntity>> categorizedTransactions = new HashMap<>();
+        categorizedTransactions.put(PerfTransactionType.ORIGINAL_TRANSACTION, Arrays.asList(new TransactionEntity()));
+
+        when(transactionEntityModelMapper.entityToModel(any(TransactionEntity.class))).thenReturn(new TransactionModel());
+
+        Map<PerfTransactionType, List<OrderTransactionDto>> result = service.processCategorizedTransactions(categorizedTransactions, "hk");
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+    }
+
+    @Test
+    void testProcessLoyaltyCategorizedTransactions_Success() {
+        Map<PerfTransactionType, List<OrderTransactionDto>> categorizedTransactions = new HashMap<>();
+        OrderTransactionDto orderTransactionDto = new OrderTransactionDto();
+        orderTransactionDto.setTransactionId("T1");
+
+        categorizedTransactions.put(PerfTransactionType.ORIGINAL_TRANSACTION, Arrays.asList(orderTransactionDto));
+
+        service.processLoyaltyCategorizedTransactions(categorizedTransactions, "hk");
+
+        verify(refundedMapper, atLeastOnce());
+    }
+}
