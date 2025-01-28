@@ -258,3 +258,106 @@ class OrderStatusTransactionalHandlerTest {
         verify(logRepository, times(1)).save(messageLog);
     }
 }
+============================================ 3
+ @InjectMocks
+    private OrderStatusTransactionalHandler handler;
+
+    @Mock
+    private OrderStatusTransactionProducer producer;
+
+    @Mock
+    private ExternalMessageLogRepository logRepository;
+
+    @Captor
+    private ArgumentCaptor<ExternalMessageLog> logCaptor;
+
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    @BeforeEach
+    void setup() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testSendMessage_ValidInput_SuccessfulFlow() throws JsonProcessingException {
+        // Arrange
+        Object payload = "SamplePayload";
+        BusinessType dataType = mock(BusinessType.class);
+        when(dataType.getCode()).thenReturn("BUSINESS_CODE");
+        String marketCode = "US";
+
+        // Act
+        handler.sendMessage(payload, dataType, marketCode);
+
+        // Assert
+        verify(producer, times(1)).sendExternalMessage(any(ExternalServiceBusMessage.class));
+        verify(logRepository, times(1)).save(logCaptor.capture());
+
+        ExternalMessageLog capturedLog = logCaptor.getValue();
+        assertTrue(capturedLog.getIsSent());
+        assertEquals(marketCode, capturedLog.getMarketCode());
+    }
+
+    @Test
+    void testSendMessage_InvalidInput_NoProcessing() {
+        // Act
+        handler.sendMessage(null, null, null);
+
+        // Assert
+        verifyNoInteractions(producer);
+        verifyNoInteractions(logRepository);
+    }
+
+    @Test
+    void testSendMessage_JsonProcessingException() throws JsonProcessingException {
+        // Arrange
+        Object payload = "InvalidPayload";
+        BusinessType dataType = mock(BusinessType.class);
+        when(dataType.getCode()).thenReturn("BUSINESS_CODE");
+        String marketCode = "US";
+
+        doThrow(new JsonProcessingException("JSON Error") {}).when(producer).sendExternalMessage(any(ExternalServiceBusMessage.class));
+
+        // Act
+        handler.sendMessage(payload, dataType, marketCode);
+
+        // Assert
+        verify(logRepository, times(1)).save(logCaptor.capture());
+
+        ExternalMessageLog capturedLog = logCaptor.getValue();
+        assertFalse(capturedLog.getIsSent());
+        assertEquals(marketCode, capturedLog.getMarketCode());
+    }
+
+    @Test
+    void testSendMessageCommonService_ValidInput_SuccessfulFlow() throws JsonProcessingException {
+        // Arrange
+        Object payload = "SamplePayload";
+        BusinessType dataType = mock(BusinessType.class);
+        when(dataType.getCode()).thenReturn("COMMON_BUSINESS_CODE");
+        String marketCode = "US";
+        String langCode = "EN";
+
+        // Act
+        handler.sendMessageCommonService(payload, dataType, marketCode, langCode);
+
+        // Assert
+        verify(producer, times(1)).sendMessage(any(CommonServiceBusMessage.class));
+        verify(logRepository, times(1)).save(logCaptor.capture());
+
+        ExternalMessageLog capturedLog = logCaptor.getValue();
+        assertTrue(capturedLog.getIsSent());
+        assertEquals(marketCode, capturedLog.getMarketCode());
+    }
+
+    @Test
+    void testSaveMessageLogSafely_FailureLogging() {
+        // Arrange
+        ExternalMessageLog messageLog = ExternalMessageLog.builder().messageId("12345").build();
+
+        doThrow(new RuntimeException("Database Error")).when(logRepository).save(any());
+
+        // Act & Assert
+        assertDoesNotThrow(() -> handler.saveMessageLogSafely(messageLog));
+        verify(logRepository, times(1)).save(messageLog);
+    }
