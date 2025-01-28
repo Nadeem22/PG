@@ -1,0 +1,260 @@
+package com.pg.sparc.messaging.producers.handler;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.pg.sparc.common.messaging.message.CommonServiceBusMessage;
+import com.pg.sparc.common.messaging.message.ExternalServiceBusMessage;
+import com.pg.sparc.entity.ExternalMessageLog;
+import com.pg.sparc.entity.types.BusinessType;
+import com.pg.sparc.messaging.producers.OrderStatusTransactionProducer;
+import com.pg.sparc.repository.ExternalMessageLogRepository;
+import java.util.Optional;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.util.ObjectUtils;
+
+/**
+ * C360 Message Handler
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class OrderStatusTransactionalHandler {
+
+    private final OrderStatusTransactionProducer producer;
+    private final ExternalMessageLogRepository logRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    /**
+     * Send message to c360
+     *
+     * @param payload    request payload
+     * @param dataType   spa data type
+     * @param marketCode market code
+     */
+    public void sendMessage(Object payload, BusinessType dataType, String marketCode) {
+        if (ObjectUtils.isEmpty(payload) || dataType == null || ObjectUtils.isEmpty(marketCode)) {
+            log.warn("Invalid input provided. Payload, dataType, and marketCode must not be null or empty.");
+            return;
+        }
+
+        ExternalServiceBusMessage message = new ExternalServiceBusMessage(UUID.randomUUID().toString(), payload, dataType.getCode());
+        ExternalMessageLog messageLog = new ExternalMessageLog();
+        
+        try {
+            messageLog = prepareLog(message, dataType, marketCode);
+            log.info("[sendMessage] Preparing to send message: {}", objectMapper.writeValueAsString(message));
+            
+            producer.sendExternalMessage(message);
+            
+            log.info("[sendMessage] Message sent successfully with ID: {}", message.getMessageId());
+        } catch (JsonProcessingException ex) {
+            handleSendFailure(ex, message, messageLog, marketCode);
+        } catch (Exception ex) {
+            log.error("[sendMessage] Unexpected error occurred while sending the message: {}", ex.getMessage(), ex);
+            handleGenericFailure(message, messageLog, marketCode);
+        } finally {
+            saveMessageLogSafely(messageLog);
+        }
+    }
+
+    public void sendMessageCommonService(Object payload, BusinessType dataType, String marketCode, String langCode) {
+        if (ObjectUtils.isEmpty(payload) || dataType == null || ObjectUtils.isEmpty(marketCode) || ObjectUtils.isEmpty(langCode)) {
+            log.warn("Invalid input provided. Payload, dataType, marketCode, and langCode must not be null or empty.");
+            return;
+        }
+
+        CommonServiceBusMessage message = new CommonServiceBusMessage();
+        message.setPayload(payload);
+        message.setTraceId(UUID.randomUUID().toString());
+        message.setMarketCode(marketCode);
+        message.setLanguageCode(langCode);
+
+        ExternalServiceBusMessage externalMessage = new ExternalServiceBusMessage(UUID.randomUUID().toString(), payload, dataType.getCode());
+        ExternalMessageLog messageLog = new ExternalMessageLog();
+        
+        try {
+            messageLog = prepareLog(externalMessage, dataType, marketCode);
+            log.info("[sendMessageCommonService] Preparing to send message-order status: {}", objectMapper.writeValueAsString(message));
+            
+            producer.sendMessage(message);
+            
+            log.info("[sendMessageCommonService] Message sent successfully with Trace ID: {}", message.getTraceId());
+        } catch (JsonProcessingException ex) {
+            handleSendFailure(ex, externalMessage, messageLog, marketCode);
+        } catch (Exception ex) {
+            log.error("[sendMessageCommonService] Unexpected error occurred while sending the message: {}", ex.getMessage(), ex);
+            handleGenericFailure(externalMessage, messageLog, marketCode);
+        } finally {
+            saveMessageLogSafely(messageLog);
+        }
+    }
+
+    private ExternalMessageLog prepareLog(ExternalServiceBusMessage message, BusinessType dataType, String marketCode) throws JsonProcessingException {
+        if (message == null || dataType == null || ObjectUtils.isEmpty(marketCode)) {
+            throw new IllegalArgumentException("Message, dataType, and marketCode must not be null or empty.");
+        }
+
+        return ExternalMessageLog.builder()
+                .messageId(message.getMessageId())
+                .businessType(dataType)
+                .content(objectMapper.writeValueAsString(message.getPayload()))
+                .isSent(true)
+                .marketCode(marketCode)
+                .build();
+    }
+
+    private void handleSendFailure(JsonProcessingException ex, ExternalServiceBusMessage message, ExternalMessageLog messageLog, String marketCode) {
+        log.error("[handleSendFailure] JSON processing error: {}", ex.getMessage(), ex);
+        
+        Optional.ofNullable(message).ifPresent(m -> {
+            messageLog.setMessageId(m.getMessageId());
+            messageLog.setMarketCode(marketCode);
+            messageLog.setIsSent(false);
+        });
+    }
+
+    private void handleGenericFailure(ExternalServiceBusMessage message, ExternalMessageLog messageLog, String marketCode) {
+        Optional.ofNullable(message).ifPresent(m -> {
+            messageLog.setMessageId(m.getMessageId());
+            messageLog.setMarketCode(marketCode);
+            messageLog.setIsSent(false);
+        });
+    }
+
+    private void saveMessageLogSafely(ExternalMessageLog messageLog) {
+        try {
+            logRepository.save(messageLog);
+            log.info("[saveMessageLogSafely] Message log saved successfully with ID: {}", messageLog.getMessageId());
+        } catch (Exception ex) {
+            log.error("[saveMessageLogSafely] Failed to save message log: {}", ex.getMessage(), ex);
+        }
+    }
+}
+===================================================================== 2
+package com.pg.sparc.messaging.producers.handler;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.pg.sparc.common.messaging.message.CommonServiceBusMessage;
+import com.pg.sparc.common.messaging.message.ExternalServiceBusMessage;
+import com.pg.sparc.entity.ExternalMessageLog;
+import com.pg.sparc.entity.types.BusinessType;
+import com.pg.sparc.messaging.producers.OrderStatusTransactionProducer;
+import com.pg.sparc.repository.ExternalMessageLogRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
+
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+class OrderStatusTransactionalHandlerTest {
+
+    @InjectMocks
+    private OrderStatusTransactionalHandler handler;
+
+    @Mock
+    private OrderStatusTransactionProducer producer;
+
+    @Mock
+    private ExternalMessageLogRepository logRepository;
+
+    @Captor
+    private ArgumentCaptor<ExternalMessageLog> logCaptor;
+
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    @BeforeEach
+    void setup() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testSendMessage_ValidInput_SuccessfulFlow() throws JsonProcessingException {
+        // Arrange
+        Object payload = "SamplePayload";
+        BusinessType dataType = mock(BusinessType.class);
+        when(dataType.getCode()).thenReturn("BUSINESS_CODE");
+        String marketCode = "US";
+
+        // Act
+        handler.sendMessage(payload, dataType, marketCode);
+
+        // Assert
+        verify(producer, times(1)).sendExternalMessage(any(ExternalServiceBusMessage.class));
+        verify(logRepository, times(1)).save(logCaptor.capture());
+
+        ExternalMessageLog capturedLog = logCaptor.getValue();
+        assertTrue(capturedLog.getIsSent());
+        assertEquals(marketCode, capturedLog.getMarketCode());
+    }
+
+    @Test
+    void testSendMessage_InvalidInput_NoProcessing() {
+        // Act
+        handler.sendMessage(null, null, null);
+
+        // Assert
+        verifyNoInteractions(producer);
+        verifyNoInteractions(logRepository);
+    }
+
+    @Test
+    void testSendMessage_JsonProcessingException() throws JsonProcessingException {
+        // Arrange
+        Object payload = "InvalidPayload";
+        BusinessType dataType = mock(BusinessType.class);
+        when(dataType.getCode()).thenReturn("BUSINESS_CODE");
+        String marketCode = "US";
+
+        doThrow(new JsonProcessingException("JSON Error") {}).when(producer).sendExternalMessage(any());
+
+        // Act
+        handler.sendMessage(payload, dataType, marketCode);
+
+        // Assert
+        verify(logRepository, times(1)).save(logCaptor.capture());
+
+        ExternalMessageLog capturedLog = logCaptor.getValue();
+        assertFalse(capturedLog.getIsSent());
+        assertEquals(marketCode, capturedLog.getMarketCode());
+    }
+
+    @Test
+    void testSendMessageCommonService_ValidInput_SuccessfulFlow() throws JsonProcessingException {
+        // Arrange
+        Object payload = "SamplePayload";
+        BusinessType dataType = mock(BusinessType.class);
+        when(dataType.getCode()).thenReturn("COMMON_BUSINESS_CODE");
+        String marketCode = "US";
+        String langCode = "EN";
+
+        // Act
+        handler.sendMessageCommonService(payload, dataType, marketCode, langCode);
+
+        // Assert
+        verify(producer, times(1)).sendMessage(any(CommonServiceBusMessage.class));
+        verify(logRepository, times(1)).save(logCaptor.capture());
+
+        ExternalMessageLog capturedLog = logCaptor.getValue();
+        assertTrue(capturedLog.getIsSent());
+        assertEquals(marketCode, capturedLog.getMarketCode());
+    }
+
+    @Test
+    void testSaveMessageLogSafely_FailureLogging() {
+        // Arrange
+        ExternalMessageLog messageLog = ExternalMessageLog.builder().messageId("12345").build();
+
+        doThrow(new RuntimeException("Database Error")).when(logRepository).save(any());
+
+        // Act & Assert
+        assertDoesNotThrow(() -> handler.saveMessageLogSafely(messageLog));
+        verify(logRepository, times(1)).save(messageLog);
+    }
+}
