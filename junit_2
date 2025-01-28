@@ -171,3 +171,107 @@ class DDPLoyalitySynchUpdateSrviceImplTest {
     }
 }
 
+===================================================================== 22 
+   @Test
+    void testGetResultIsSendToLoyalty_Valid() {
+        ConsumerDetailDto consumerDetailDto = new ConsumerDetailDto();
+        ConsumerDetailDto.Subscription subscription = new ConsumerDetailDto.Subscription("now", "yes");
+        consumerDetailDto.setSubscription(subscription);
+        consumerDetailDto.setBinds(Arrays.asList(new ConsumerDetailDto.Bind("line", "yes")));
+
+        boolean result = service.getResultIsSendToLoyalty(consumerDetailDto);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void testIsOneStatusConsumer_Valid() {
+        ConsumerDetailDto consumerDetailDto = new ConsumerDetailDto();
+        ConsumerDetailDto.BasicDetail basicDetail = new ConsumerDetailDto.BasicDetail();
+        basicDetail.setConsumerOneIdStatus("1");
+        consumerDetailDto.setBasic(basicDetail);
+
+        boolean result = service.isOneStatusConsumer("1", consumerDetailDto);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void testGetPurchaseTransaction_Success() {
+        TransactionModel transactionModel = new TransactionModel();
+        transactionModel.setProperties(Collections.singletonMap("EXT_PURCHASE_TRANSACTION_ID", "T1"));
+
+        TransactionEntity transactionEntity = new TransactionEntity();
+        when(transactionRepository.findById("T1")).thenReturn(Optional.of(transactionEntity));
+        when(transactionEntityModelMapper.entityToModel(transactionEntity)).thenReturn(new TransactionModel());
+
+        TransactionModel result = service.getPurchaseTransaction(transactionModel);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testPrepareSendCompletedOrderList_Success() {
+        TransactionModel transactionModel = new TransactionModel();
+        transactionModel.setId("T1");
+        CounterEntity counterEntity = new CounterEntity();
+        counterEntity.setId("C1");
+        OrderTransactionDto dto = new OrderTransactionDto();
+
+        when(completedMapper.toDto(transactionModel, counterEntity, "hk")).thenReturn(dto);
+
+        OrderTransactionDto result = service.prepareSendCompletedOrderList(transactionModel, counterEntity, "hk");
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testSendRefundedOrder_Success() {
+        TransactionModel returnTransaction = new TransactionModel();
+        returnTransaction.setId("R1");
+        CounterEntity counterEntity = new CounterEntity();
+        counterEntity.setId("C1");
+        TransactionModel originalTransaction = new TransactionModel();
+        originalTransaction.setId("O1");
+        OrderTransactionDto dto = new OrderTransactionDto();
+
+        when(service.getOriginalTransaction(returnTransaction)).thenReturn(originalTransaction);
+        when(refundedMapper.toDto(eq(returnTransaction), eq(originalTransaction), any(), eq(counterEntity), eq(false), eq(true), eq("hk")))
+                .thenReturn(dto);
+
+        OrderTransactionDto result = service.sendRefundedOrder(returnTransaction, counterEntity, "hk");
+
+        assertNotNull(result);
+        verify(refundedMapper).toDto(eq(returnTransaction), eq(originalTransaction), any(), eq(counterEntity), eq(false), eq(true), eq("hk"));
+    }
+
+    @Test
+    void testProcessCategorizedTransactions_Success() {
+        Map<PerfTransactionType, List<TransactionEntity>> categorizedTransactions = new HashMap<>();
+        TransactionEntity transactionEntity = new TransactionEntity();
+        transactionEntity.setId("T1");
+        categorizedTransactions.put(PerfTransactionType.ORIGINAL_TRANSACTION, List.of(transactionEntity));
+
+        TransactionModel transactionModel = new TransactionModel();
+        transactionModel.setId("T1");
+        when(transactionEntityModelMapper.entityToModel(transactionEntity)).thenReturn(transactionModel);
+
+        Map<PerfTransactionType, List<OrderTransactionDto>> result = service.processCategorizedTransactions(categorizedTransactions, "hk");
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertTrue(result.containsKey(PerfTransactionType.ORIGINAL_TRANSACTION));
+    }
+
+    @Test
+    void testProcessLoyaltyCategorizedTransactions_Success() {
+        Map<PerfTransactionType, List<OrderTransactionDto>> categorizedTransactions = new HashMap<>();
+        OrderTransactionDto orderTransactionDto = new OrderTransactionDto();
+        orderTransactionDto.setTransactionId("T1");
+
+        categorizedTransactions.put(PerfTransactionType.ORIGINAL_TRANSACTION, List.of(orderTransactionDto));
+
+        service.processLoyaltyCategorizedTransactions(categorizedTransactions, "hk");
+
+        verifyNoInteractions(refundedMapper);
+    }
