@@ -471,3 +471,42 @@ class OrderStatusTransactionalHandlerTest {
         // Assert
         verify(logRepository).save(messageLog);
     }
+=============================================================================================== 25
+public class MetadataStatusWrapper {
+    private LoyalitySynchUpdateMetaData metadata;
+
+    public MetadataStatusWrapper(LoyalitySynchUpdateMetaData metadata) {
+        this.metadata = metadata;
+    }
+
+    // Getter to access metadata
+    public LoyalitySynchUpdateMetaData getMetadata() {
+        return metadata;
+    }
+
+    // Mark status as SUCCESS
+    public void markSuccess() {
+        this.metadata.setStatus("SUCCESS");
+    }
+
+    // Mark status as FAILED
+    public void markFailed() {
+        this.metadata.setStatus("FAILED");
+    }
+
+    // Set end time
+    public void setEndTime(ZonedDateTime endTime) {
+        this.metadata.setEndTime(endTime);
+    }
+
+    // Set last run time
+    public void setLastRunTime(ZonedDateTime lastRunTime) {
+        this.metadata.setLastRunTime(lastRunTime);
+    }
+
+    // Set start time
+    public void setStartTime(ZonedDateTime startTime) {
+        this.metadata.setStartTime(startTime);
+    }
+}
+==================================================================== 26
