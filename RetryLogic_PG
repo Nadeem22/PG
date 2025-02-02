@@ -1,0 +1,163 @@
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.backoff.ExponentialBackoffPolicy;
+import org.springframework.retry.policy.SimpleRetryPolicy;
+import org.springframework.retry.support.RetryTemplate;
+
+@Service
+@RequiredArgsConstructor
+public class LoyaltySynchServiceImpl implements LoyaltySynchService {
+
+    private final ExternalMessageLogRepository repository;
+    private final ServiceBusSender serviceBusSender;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private static final Logger log = LoggerFactory.getLogger(LoyaltyServiceImpl.class);
+    private final StringBuilder errorMessage = new StringBuilder();
+    
+    // 🔴 Modified Code: Apply @Retryable to retry on failures
+    @Override
+    @Retryable(
+        value = { Exception.class }, // Retry for any Exception
+        maxAttempts = 3, // Retry up to 3 times
+        backoff = @Backoff(delay = 2000, multiplier = 2) // Start with 2s delay, then exponential
+    )
+    public CompletableFuture<Boolean> sendToServiceBus(LoyaltyOrderCompletedModel loyaltyOrderSend, ExternalMessageLog spadCallApiLogModel) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String payload = objectMapper.writeValueAsString(loyaltyOrderSend);
+                log.info("LoyaltyHandler Sending message: {}", payload);
+                serviceBusSender.sendMessage(payload, spadCallApiLogModel.getMessageId());
+                return true;
+            } catch (Exception ex) {
+                log.error("OrderCompleted send to loyalty service bus error (Attempt {}): {}", 
+                          ex.getMessage(), ex);
+                throw ex; // 🔴 Throw exception to trigger retry
+            }
+        });
+    }
+
+    // 🔴 Modified Code: Handle retry failure after max attempts
+    @Recover
+    public CompletableFuture<Boolean> handleSendToServiceBusFailure(Exception ex, 
+                                    LoyaltyOrderCompletedModel loyaltyOrderSend, 
+                                    ExternalMessageLog spadCallApiLogModel) {
+        log.error("Max retries reached! OrderCompleted send to loyalty service bus failed. Saving failure record...");
+        saveFailedRecord(loyaltyOrderSend, ex.getMessage(), spadCallApiLogModel);
+        return CompletableFuture.completedFuture(false);
+    }
+}
+============================================================================================
+
+package com.pg.sparc.loyality.market.jp.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.retry.annotation.EnableRetry;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pg.sparc.entity.ExternalMessageLog;
+import com.pg.sparc.market.jp.service.ServiceBusSender;
+import com.pg.sparc.model.loyalty.LoyaltyOrderCompletedModel;
+import com.pg.sparc.model.loyalty.SPAOrderCompletedDto;
+import com.pg.sparc.repository.ExternalMessageLogRepository;
+
+@ExtendWith(MockitoExtension.class)
+@EnableRetry // Enables Spring Retry in Tests
+public class LoyaltySynchServiceImplTest {
+
+    @Mock
+    private ExternalMessageLogRepository repository;
+
+    @Mock
+    private ServiceBusSender serviceBusSender;
+
+    @InjectMocks
+    private LoyaltySynchServiceImpl loyaltySynchService;
+
+    private ExternalMessageLog logModel;
+    private LoyaltyOrderCompletedModel loyaltyOrderCompletedModel;
+    private SPAOrderCompletedDto validOrder;
+
+    @BeforeEach
+    void setUp() {
+        logModel = new ExternalMessageLog();
+        logModel.setMessageId("test-message-id");
+
+        loyaltyOrderCompletedModel = new LoyaltyOrderCompletedModel();
+        
+        validOrder = new SPAOrderCompletedDto();
+        validOrder.setTransactionId("12345");
+        validOrder.setMemberId("M001");
+        validOrder.setSpaBrand("SPA1");
+        validOrder.setSpaRegion("Region1");
+        validOrder.setIsSendToLoyalty(true);
+    }
+
+    // ✅ Test Successful Execution
+    @Test
+    void testSendToServiceBus_Success() {
+        doNothing().when(serviceBusSender).sendMessage(anyString(), anyString());
+
+        CompletableFuture<Boolean> result = loyaltySynchService.sendToServiceBus(loyaltyOrderCompletedModel, logModel);
+        
+        assertTrue(result.join());
+        verify(serviceBusSender, times(1)).sendMessage(anyString(), anyString());
+    }
+
+    // ✅ Test Retry on Failure
+    @Test
+    void testSendToServiceBus_WithRetry() {
+        doThrow(new RuntimeException("Service Bus Failure"))
+            .doThrow(new RuntimeException("Service Bus Failure Again"))
+            .doNothing() // Third attempt succeeds
+            .when(serviceBusSender).sendMessage(anyString(), anyString());
+
+        CompletableFuture<Boolean> result = loyaltySynchService.sendToServiceBus(loyaltyOrderCompletedModel, logModel);
+
+        assertTrue(result.join());
+        verify(serviceBusSender, times(3)).sendMessage(anyString(), anyString());
+    }
+
+    // ✅ Test Failure After Maximum Retries
+    @Test
+    void testSendToServiceBus_MaxRetryFailure() {
+        doThrow(new RuntimeException("Permanent Failure"))
+            .when(serviceBusSender).sendMessage(anyString(), anyString());
+
+        CompletableFuture<Boolean> result = loyaltySynchService.sendToServiceBus(loyaltyOrderCompletedModel, logModel);
+
+        assertFalse(result.join());
+        verify(serviceBusSender, times(3)).sendMessage(anyString(), anyString());
+    }
+
+    // ✅ Test Empty Order List
+    @Test
+    void testProcessOrderCompletedList_EmptyList() {
+        CompletableFuture<String> result = loyaltySynchService.processOrderCompletedList(Collections.emptyList(), logModel, false);
+        
+        assertEquals("", result.join());
+        verify(serviceBusSender, never()).sendMessage(anyString(), anyString());
+    }
+
+    // ✅ Test Invalid Orders Are Not Sent
+    @Test
+    void testProcessOrderCompletedList_InvalidOrder() {
+        validOrder.setMemberId(null); // Invalid Order
+
+        CompletableFuture<String> result = loyaltySynchService.processOrderCompletedList(Collections.singletonList(validOrder), logModel, false);
+
+        assertEquals("", result.join());
+        verify(serviceBusSender, never()).sendMessage(anyString(), anyString());
+    }
+}
+================================================================================================
