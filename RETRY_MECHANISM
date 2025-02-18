@@ -1,0 +1,127 @@
+package com.pg.sparc.market.jp.service;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import com.google.gson.Gson;
+import com.pg.sparc.common.SparcProperties.MediaApp.Container;
+import com.pg.sparc.common.enumeration.SpaIntegrationDataType;
+import com.pg.sparc.common.media.MediaAppService;
+import com.pg.sparc.constant.Constants;
+import com.pg.sparc.entity.ExternalMessageLog;
+import com.pg.sparc.loyality.market.jp.service.LoyaltySynchService;
+import com.pg.sparc.model.loyalty.LoyaltyOrderCompletedModel;
+import com.pg.sparc.model.loyalty.LoyaltyTransactionModel;
+import com.pg.sparc.model.loyalty.SPAOrderCompletedDto;
+import com.pg.sparc.repository.ExternalMessageLogRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class DdpSdcLoyalitySynchUpdateRetryServiceImpl implements DdpSdcLoyalitySynchUpdateRetryService {
+
+    private final ExternalMessageLogRepository externalMessageLogRepository;
+    private final LoyaltySynchService loyaltyService;
+    private final StringRedisTemplate redisTemplate;
+    private final MediaAppService mediaAppService;
+
+    @Value("${spring.application.name}")
+    private String serviceName;
+
+    @Value("${messaging.retry-options.max-retries}")
+    private int maxRetries;
+
+    private static final String REDIS_RETRY_KEY = "retry_order:";
+
+    @Override
+    public void sendFailedMessage(String marketCode) {
+        log.info("sendFailedMessage execution started for marketCode: {}", marketCode);
+
+        List<SpaIntegrationDataType> eventNameList = List.of(
+            SpaIntegrationDataType.ORDER_COMPLETED_DATA,
+            SpaIntegrationDataType.ORDER_REFUNDED_DATA
+        );
+
+        List<ExternalMessageLog> failedOrders = externalMessageLogRepository
+            .findAllByIsSendAndBusinessTypeInAndMarketCode(false, eventNameList, marketCode);
+
+        for (ExternalMessageLog failedOrder : failedOrders) {
+            processFailedOrder(failedOrder);
+        }
+    }
+
+    private void processFailedOrder(ExternalMessageLog failedOrder) {
+        String redisKey = REDIS_RETRY_KEY + failedOrder.getTransactionId();
+        int currentRetryCount = getRetryCount(redisKey);
+
+        if (currentRetryCount >= maxRetries) {
+            log.warn("Max retry count ({}) reached for transactionID: {}. Removing from retry queue.", maxRetries, failedOrder.getTransactionId());
+            redisTemplate.delete(redisKey);
+            return;
+        }
+
+        log.info("Retrying order with transactionID: {} (Attempt: {}/{})", failedOrder.getTransactionId(), currentRetryCount + 1, maxRetries);
+
+        try {
+            byte[] payload = downloadPayload(failedOrder);
+            if (payload == null) {
+                log.error("Failed to download payload for transactionID: {}", failedOrder.getTransactionId());
+                return;
+            }
+
+            SPAOrderCompletedDto orderDto = new Gson().fromJson(Arrays.toString(payload), SPAOrderCompletedDto.class);
+            LoyaltyOrderCompletedModel loyaltyOrderSend = loyaltyService.getLoyaltyOrderCompletedModel(orderDto.getMemberId(), orderDto.getSpaBrand(), orderDto.getSpaRegion());
+            LoyaltyTransactionModel model = loyaltyService.getLoyaltyTransactionModel(orderDto);
+            loyaltyOrderSend.getJsonObject().getTransactions().add(model);
+
+            boolean success = loyaltyService.retryFailedOrder(failedOrder, loyaltyOrderSend);
+
+            if (success) {
+                markOrderAsSent(failedOrder, redisKey);
+            } else {
+                updateRetryCount(redisKey, currentRetryCount);
+            }
+
+        } catch (Exception e) {
+            log.error("Error while retrying transactionID: {}", failedOrder.getTransactionId(), e);
+        }
+    }
+
+    private byte[] downloadPayload(ExternalMessageLog failedOrder) {
+        Predicate<Container> condition = c -> c.getService().equals(serviceName)
+            && c.getType().equals(Constants.CONTAINER_EXTERNAL_MESSAGES);
+        return mediaAppService.downloadToBlob(failedOrder.getAzureId(), condition, failedOrder.getAzureId());
+    }
+
+    private void markOrderAsSent(ExternalMessageLog failedOrder, String redisKey) {
+        failedOrder.setIsSend(true);
+        externalMessageLogRepository.save(failedOrder);
+        redisTemplate.delete(redisKey);
+        log.info("Order with transactionID: {} retried successfully", failedOrder.getTransactionId());
+    }
+
+    private void updateRetryCount(String redisKey, int currentRetryCount) {
+        redisTemplate.opsForValue().set(redisKey, String.valueOf(currentRetryCount + 1), 1, TimeUnit.DAYS);
+        log.warn("Order retry failed. TransactionID: {} (Attempt: {}/{})", redisKey.replace(REDIS_RETRY_KEY, ""), currentRetryCount + 1, maxRetries);
+    }
+
+    private int getRetryCount(String redisKey) {
+        try {
+            String retryValue = redisTemplate.opsForValue().get(redisKey);
+            return (retryValue == null) ? 0 : Integer.parseInt(retryValue);
+        } catch (NumberFormatException e) {
+            log.error("Invalid retry count format in Redis for key: {}", redisKey, e);
+            return 0;
+        }
+    }
+}
