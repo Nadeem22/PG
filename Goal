@@ -24,3 +24,79 @@ Take the lead in mentoring junior developers, conducting code reviews, and shari
 
 7. Focus on Continuous Learning and Certification
 Complete certifications in relevant areas such as Spring Professional Certification, Oracle Certified Java Programmer (OCJP), or cloud certifications like AWS Certified Developer.
+==============================================
+  @Override
+    public void getTokenFromRedis() {
+        log.info("getTokenFromRedis method started");
+        try {
+            String authToken = getTokenForRedis(REDIS_KEY);
+            if (!StringUtils.hasText(authToken)) {
+                log.info("Token is not present in redis cache, fetching new token");
+                authToken = getTokenFromUserService();
+            } else {
+                log.info("Token found in redis cache");
+                authToken = authToken.replace("Bearer", "").trim();
+                DecodedJWT jwt = JWT.decode(authToken);
+                if (jwt.getExpiresAt() == null || jwt.getExpiresAt().before(new Date())) {
+                    log.info("Token obtained from redis cache is expired or invalid, fetching new token");
+                    authToken = getTokenFromUserService();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while retrieving token from Redis: ", e);
+        }
+    }
+
+    private String getTokenForRedis(String key) {
+        if (!StringUtils.hasText(key)) {
+            log.warn("Redis key is empty or null");
+            return null;
+        }
+        log.info("Fetching token from Redis for key: {}", key);
+        try {
+            RedisConnection redisConnection = Objects.requireNonNull(redisTemplate.getConnectionFactory(), "Redis connection factory is null").getConnection();
+            byte[] tokenArray = redisConnection.get(key.getBytes(StandardCharsets.UTF_8));
+            if (tokenArray != null) {
+                String token = new String(tokenArray, StandardCharsets.UTF_8);
+                log.debug("Token retrieved from Redis: {}", token);
+                return token;
+            }
+        } catch (Exception e) {
+            log.error("Error retrieving token from Redis: ", e);
+        }
+        return null;
+    }
+
+    private String getTokenFromUserService() {
+        log.info("Fetching token from user service");
+        try {
+            AuthTokenResponse authTokenResponse = userServiceClient.authWithClientCredentials(Boolean.TRUE.toString());
+            if (authTokenResponse != null && authTokenResponse.getData() != null) {
+                String authToken = authTokenResponse.getData().getT();
+                log.debug("Token retrieved from user service: {}", authToken);
+                saveToRedis(REDIS_KEY, authToken);
+                log.info("Token saved in Redis successfully");
+                return authToken;
+            }
+        } catch (Exception e) {
+            log.error("Error fetching token from user service: ", e);
+        }
+        return null;
+    }
+
+    private boolean saveToRedis(String key, String value) {
+        if (!StringUtils.hasText(key) || !StringUtils.hasText(value)) {
+            log.warn("Invalid key or value provided for Redis storage");
+            return false;
+        }
+        log.info("Saving token to Redis with key: {}", key);
+        try {
+            RedisConnection redisConnection = Objects.requireNonNull(redisTemplate.getConnectionFactory(), "Redis connection factory is null").getConnection();
+            boolean result = redisConnection.set(key.getBytes(StandardCharsets.UTF_8), value.getBytes(StandardCharsets.UTF_8));
+            log.debug("Token save operation result: {}", result);
+            return result;
+        } catch (Exception e) {
+            log.error("Error saving token to Redis: ", e);
+            return false;
+        }
+    }
