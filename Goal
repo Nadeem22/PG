@@ -100,3 +100,152 @@ Complete certifications in relevant areas such as Spring Professional Certificat
             return false;
         }
     }
+===================================================================================================================
+
+package com.pg.sparc.loyality.market.jp.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import com.pg.sparc.entity.ExternalMessageLog;
+import com.pg.sparc.model.loyalty.LoyaltyOrderCompletedModel;
+import com.pg.sparc.repository.ExternalMessageLogRepository;
+
+@ExtendWith(MockitoExtension.class)
+class LoyaltySynchServiceImplTest {
+
+    @Mock
+    private ExternalMessageLogRepository repository;
+
+    @Mock
+    private ServiceBusSender serviceBusSender;
+
+    @InjectMocks
+    private LoyaltySynchServiceImpl loyaltySynchService;
+
+    private ExternalMessageLog messageLog;
+    private LoyaltyOrderCompletedModel orderCompletedModel;
+
+    @BeforeEach
+    void setUp() {
+        messageLog = new ExternalMessageLog();
+        messageLog.setMessageId("12345");
+        messageLog.setIsSend(false);
+
+        orderCompletedModel = new LoyaltyOrderCompletedModel();
+    }
+
+    // ✅ Test for sendToServiceBus() - Success Case
+    @Test
+    void testSendToServiceBus_Success() throws Exception {
+        when(serviceBusSender.sendMessage(anyString(), anyString())).thenReturn(true);
+
+        CompletableFuture<Boolean> result = loyaltySynchService.sendToServiceBus(orderCompletedModel, messageLog);
+        
+        assertTrue(result.join());
+        verify(serviceBusSender, times(1)).sendMessage(anyString(), eq("12345"));
+    }
+
+    // ✅ Test for sendToServiceBus() - Failure Case
+    @Test
+    void testSendToServiceBus_Failure() throws Exception {
+        doThrow(new RuntimeException("Service Bus Error")).when(serviceBusSender).sendMessage(anyString(), anyString());
+
+        CompletableFuture<Boolean> result = loyaltySynchService.sendToServiceBus(orderCompletedModel, messageLog);
+        
+        assertFalse(result.join());
+        verify(serviceBusSender, times(1)).sendMessage(anyString(), eq("12345"));
+    }
+
+    // ✅ Test for sendData() - Should update isSend = true
+    @Test
+    void testSendData_Success() {
+        when(repository.save(any(ExternalMessageLog.class))).thenReturn(messageLog);
+        when(serviceBusSender.sendMessage(anyString(), anyString())).thenReturn(true);
+
+        CompletableFuture<Boolean> result = loyaltySynchService.sendData(messageLog, orderCompletedModel);
+        
+        assertTrue(result.join());
+        assertTrue(messageLog.getIsSend());
+        verify(repository, times(1)).save(messageLog);
+    }
+
+    // ✅ Test for retryFailedOrder() - Should update isSend = true on success
+    @Test
+    void testRetryFailedOrder_Success() {
+        when(repository.save(any(ExternalMessageLog.class))).thenReturn(messageLog);
+        when(serviceBusSender.sendMessage(anyString(), anyString())).thenReturn(true);
+
+        boolean result = loyaltySynchService.retryFailedOrder(messageLog, orderCompletedModel);
+
+        assertTrue(result);
+        assertTrue(messageLog.getIsSend());
+        verify(repository, times(1)).save(messageLog);
+    }
+
+    // ✅ Test for retryFailedOrder() - Should keep isSend = false on failure
+    @Test
+    void testRetryFailedOrder_Failure() {
+        when(repository.save(any(ExternalMessageLog.class))).thenReturn(messageLog);
+        doThrow(new RuntimeException("Service Bus Error")).when(serviceBusSender).sendMessage(anyString(), anyString());
+
+        boolean result = loyaltySynchService.retryFailedOrder(messageLog, orderCompletedModel);
+
+        assertFalse(result);
+        assertFalse(messageLog.getIsSend());
+        verify(repository, never()).save(messageLog);
+    }
+
+    // ✅ Test for saveFailedRecord() - Should update existing record
+    @Test
+    void testSaveFailedRecord() {
+        when(repository.findByMessageId(anyString())).thenReturn(Optional.of(messageLog));
+
+        loyaltySynchService.saveFailedRecord(orderCompletedModel, "Service Bus Error", messageLog);
+
+        assertEquals("Service Bus Error", messageLog.getErrMessage());
+        assertFalse(messageLog.getIsSend());
+        verify(repository, times(1)).save(messageLog);
+    }
+
+    // ✅ Test for saveSuccessRecords() - Should update existing record
+    @Test
+    void testSaveSuccessRecords() {
+        when(repository.findByMessageId(anyString())).thenReturn(Optional.of(messageLog));
+
+        loyaltySynchService.saveSuccessRecords(orderCompletedModel, messageLog);
+
+        assertTrue(messageLog.getIsSend());
+        verify(repository, times(1)).save(messageLog);
+    }
+
+    // ✅ Test for saveNoNeedSendRecord() - Should update existing record
+    @Test
+    void testSaveNoNeedSendRecord() {
+        when(repository.findByMessageId(anyString())).thenReturn(Optional.of(messageLog));
+
+        loyaltySynchService.saveNoNeedSendRecord(messageLog);
+
+        assertFalse(messageLog.getIsSend());
+        verify(repository, times(1)).save(messageLog);
+    }
+
+    // ✅ Test for saveInvalidRecord() - Should update existing record
+    @Test
+    void testSaveInvalidRecord() {
+        when(repository.findByMessageId(anyString())).thenReturn(Optional.of(messageLog));
+
+        loyaltySynchService.saveInvalidRecord(messageLog);
+
+        assertFalse(messageLog.getIsSend());
+        verify(repository, times(1)).save(messageLog);
+    }
+}
