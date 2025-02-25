@@ -125,3 +125,68 @@ public class DdpSdcLoyalitySynchUpdateRetryServiceImpl implements DdpSdcLoyality
         }
     }
 }
+=====================================================================================
+void processLoyaltyCategorizedTransactions(Map<PerfTransactionType, List<OrderTransactionDto>> loyaltyCategorizedTransactionList, String marketCode) {
+    log.info("Starting processLoyaltyCategorizedTransactions to process categorized loyalty transactions.");
+
+    if (loyaltyCategorizedTransactionList == null || loyaltyCategorizedTransactionList.isEmpty()) {
+        log.warn("The loyaltyCategorizedTransactionList map is null or empty. No processing will be performed.");
+        return;
+    }
+
+    // Define the preferred processing order
+    List<PerfTransactionType> processingOrder = Arrays.asList(
+        PerfTransactionType.ORIGINAL_TRANSACTION,
+        PerfTransactionType.OTHER_TRANSACTION,
+        PerfTransactionType.EDIT_TRANSACTION,
+        PerfTransactionType.NEW_TRANSACTION_FOR_A_RETURN
+    );
+
+    // Process transactions in the defined order
+    for (PerfTransactionType transactionType : processingOrder) {
+        List<OrderTransactionDto> transactionList = loyaltyCategorizedTransactionList.get(transactionType);
+
+        if (transactionList == null || transactionList.isEmpty()) {
+            log.warn("No transactions found for transaction type: {}. Skipping processing.", transactionType);
+            continue;
+        }
+
+        log.info("Processing {} transactions for transaction type: {}.", transactionList.size(), transactionType);
+
+        for (OrderTransactionDto transactionDto : transactionList) {
+            try {
+                log.debug("[processLoyaltyCategorizedTransactions] Processing transaction ID: {} for transaction type: {}.", 
+                          transactionDto.getTransactionId(), transactionType);
+
+                // Process each type with a switch case for better readability
+                switch (transactionType) {
+                    case ORIGINAL_TRANSACTION:
+                    case EDIT_TRANSACTION:
+                        handler.sendMessageCommonService(transactionDto, BusinessType.ORDER_COMPLETED_DATA, marketCode, LANGUAGE_CODE_EN);
+                        log.info("Sent transaction ID: {} to ORDER_COMPLETED_DATA handler for transaction type: {}.",
+                                transactionDto.getTransactionId(), transactionType);
+                        break;
+
+                    case OTHER_TRANSACTION:
+                        handler.sendMessageCommonService(transactionDto, BusinessType.ORDER_REFUND_DATA, marketCode, LANGUAGE_CODE_EN);
+                        log.info("Sent transaction ID: {} to ORDER_REFUND_DATA handler for RETURN transaction type.",
+                                transactionDto.getTransactionId());
+                        break;
+
+                    case NEW_TRANSACTION_FOR_A_RETURN:
+                        log.info("Skipping NEW_PURCHASE transaction type for transaction ID: {}.", transactionDto.getTransactionId());
+                        break;
+
+                    default:
+                        log.warn("Invalid transaction type: {} encountered for transaction ID: {}.", transactionType, transactionDto.getTransactionId());
+                        break;
+                }
+            } catch (Exception e) {
+                log.error("Error processing transaction ID: {} for transaction type: {}: {}",
+                        transactionDto.getTransactionId(), transactionType, e.getMessage(), e);
+            }
+        }
+    }
+
+    log.info("Finished processing categorized loyalty transactions.");
+}
