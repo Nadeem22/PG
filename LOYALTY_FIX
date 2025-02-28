@@ -1,0 +1,35 @@
+@Query("SELECT t FROM TransactionEntity t WHERE t.marketCode = :marketCode " +
+       "AND (CASE WHEN t.extType IS NULL OR t.extType = '' THEN 'SDC' ELSE t.extType END) = 'SDC' " +
+       "AND t.consumerType IS NOT NULL " +
+       "AND (COALESCE(:counterIds, NULL) IS NULL OR t.counter.id NOT IN :counterIds) " +
+       "ORDER BY t.lastModifiedDate DESC")
+List<TransactionEntity> findByMarketCodeAndNotInCounters(
+  @Param("marketCode") String marketCode, 
+  @Param("counterIds") List<String> counterIds);
+
+@Query("SELECT t FROM TransactionEntity t WHERE t.marketCode = :marketCode " +
+       "AND (CASE WHEN t.extType IS NULL OR t.extType = '' THEN 'SDC' ELSE t.extType END) = 'SDC' " +
+       "AND t.consumerType IS NOT NULL " +
+       "AND (COALESCE(:counterIds, NULL) IS NULL OR t.counter.id NOT IN :counterIds) " +
+       "AND t.lastModifiedDate > :lastModifiedDate " +
+       "ORDER BY t.lastModifiedDate DESC")
+List<TransactionEntity> findByMarketCodeAndCounterNotInAndLastModifiedDateAfter(
+  @Param("marketCode") String marketCode, 
+  @Param("counterIds") List<String> counterIds, 
+  @Param("lastModifiedDate") ZonedDateTime lastModifiedDate);
+
+@Query("SELECT t FROM TransactionEntity t WHERE t.marketCode = :marketCode " +
+       "AND (CASE WHEN t.extType IS NULL OR t.extType = '' THEN 'SDC' ELSE t.extType END) = 'SDC' " +
+       "AND t.consumerType IS NOT NULL " +
+       "ORDER BY t.lastModifiedDate DESC")
+List<TransactionEntity> findByMarketCode(
+  @Param("marketCode") String marketCode);
+
+@Query("SELECT t FROM TransactionEntity t WHERE t.marketCode = :marketCode " +
+       "AND (CASE WHEN t.extType IS NULL OR t.extType = '' THEN 'SDC' ELSE t.extType END) = 'SDC' " +
+       "AND t.consumerType IS NOT NULL " +
+       "AND t.lastModifiedDate > :lastModifiedDate " +
+       "ORDER BY t.lastModifiedDate DESC")
+List<TransactionEntity> findByMarketCodeAndLastModifiedDateAfter(
+  @Param("marketCode") String marketCode, 
+  @Param("lastModifiedDate") ZonedDateTime lastModifiedDate);
