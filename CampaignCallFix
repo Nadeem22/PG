@@ -1,0 +1,108 @@
+OrderTransactionDto prepareSendCompletedOrderList(TransactionModel transaction, CounterEntity counterEntity, String marketCode) {
+    log.info("Starting to prepare OrderTransactionDto for transaction ID: {} and marketCode: {}", transaction.getId(), marketCode);
+
+    OrderTransactionDto loyaltyDto;
+    try {
+        loyaltyDto = completedMapper.toDto(transaction, counterEntity, marketCode);
+        log.debug("Successfully mapped transaction ID: {} to OrderTransactionDto", transaction.getId());
+
+        List<String> campaignIds = transaction.getTransactionCampaigns() != null ?
+                transaction.getTransactionCampaigns().stream()
+                        .map(TransactionCampaignModel::getCampaignId)
+                        .filter(Objects::nonNull) // Filter out null campaign IDs
+                        .collect(Collectors.toList()) :
+                Collections.emptyList();
+
+        if (!campaignIds.isEmpty()) {
+            log.debug("Extracted campaign IDs: {} for transaction ID: {}", campaignIds, transaction.getId());
+
+            List<CampaignBasicDetailModel> campaignDetails = campaignService.getCampaignDetails(campaignIds, marketCode, LanguageCode.EN);
+            log.debug("Fetched campaign details for transaction ID: {}, campaignDetails count: {}", transaction.getId(), campaignDetails.size());
+
+            List<CampaignDto> campaignDtoList = loyaltyDto.getCampaignList();
+            if (campaignDtoList != null && !campaignDtoList.isEmpty()) {
+                Map<String, CampaignBasicDetailModel> campaignDetailMap = campaignDetails.stream()
+                        .collect(Collectors.toMap(CampaignBasicDetailModel::getCampaignId, model -> model));
+
+                campaignDtoList.forEach(campaignDto -> {
+                    CampaignBasicDetailModel detailModel = campaignDetailMap.get(campaignDto.getCampaignId());
+                    if (detailModel != null) {
+                        campaignDto.setCampaignName(detailModel.getCampaignName());
+                        campaignDto.setCampaignCode(detailModel.getCampaignCode());
+                        log.debug("Updated campaign DTO with ID: {} with name: {} and code: {}",
+                                campaignDto.getCampaignId(), detailModel.getCampaignName(), detailModel.getCampaignCode());
+                    } else {
+                        log.warn("No details found for campaign ID: {} in transaction ID: {}", campaignDto.getCampaignId(), transaction.getId());
+                    }
+                });
+            } else {
+                log.warn("No campaign DTOs found for transaction ID: {}", transaction.getId());
+            }
+        } else {
+            log.info("No campaign IDs found for transaction ID: {}. Skipping campaign details fetch.", transaction.getId());
+            loyaltyDto.setCampaignList(Collections.emptyList()); // Ensure empty list is set
+        }
+
+        loyaltyDto.setPurchaseUpdateDate(ZonedDateTime.now()
+                .withZoneSameInstant(ZoneId.systemDefault())
+                .format(TimeUtil.PURCHASE_UPDATE_DATE_FORMAT_FOR_LOYALTY));
+        loyaltyDto.setEventType(BusinessType.ORDER_COMPLETED_DATA.getCode());
+
+        log.info("Successfully prepared OrderTransactionDto for transaction ID: {}", transaction.getId());
+    } catch (Exception e) {
+        log.error("Error while preparing OrderTransactionDto for transaction ID: {}: {}", transaction.getId(), e.getMessage(), e);
+        throw new RuntimeException("Error preparing OrderTransactionDto for transaction ID: " + transaction.getId(), e);
+    }
+
+    log.info("Successfully processed completed order for return transaction ID: {}", transaction.getId());
+
+    return loyaltyDto;
+}
+====================================================================================================================
+
+void populateCampaignDetails(TransactionModel returnTransaction, OrderTransactionDto orderLoyalty, String marketCode) {
+    log.info("[populateCampaignDetails] method started for return transaction ID: {}", returnTransaction.getId());
+
+    try {
+        List<String> campaignIds = returnTransaction.getTransactionCampaigns() != null ?
+                returnTransaction.getTransactionCampaigns().stream()
+                        .map(TransactionCampaignModel::getCampaignId)
+                        .filter(Objects::nonNull) // Filter out null campaign IDs
+                        .collect(Collectors.toList()) :
+                Collections.emptyList();
+
+        if (!campaignIds.isEmpty()) {
+            log.info("Extracted campaign IDs: {} for return transaction ID: {}", campaignIds, returnTransaction.getId());
+
+            List<CampaignBasicDetailModel> campaignDetails = campaignService.getCampaignDetails(campaignIds, marketCode, LanguageCode.EN);
+            log.info("Fetched campaign details for return transaction ID: {}, campaignDetails count: {}", returnTransaction.getId(), campaignDetails.size());
+
+            List<CampaignDto> campaignDtoList = orderLoyalty.getCampaignList();
+            if (campaignDtoList != null && !campaignDtoList.isEmpty()) {
+                Map<String, CampaignBasicDetailModel> campaignDetailMap = campaignDetails.stream()
+                        .collect(Collectors.toMap(CampaignBasicDetailModel::getCampaignId, model -> model));
+
+                campaignDtoList.forEach(campaignDto -> {
+                    CampaignBasicDetailModel detailModel = campaignDetailMap.get(campaignDto.getCampaignId());
+                    if (detailModel != null) {
+                        campaignDto.setCampaignName(detailModel.getCampaignName());
+                        campaignDto.setCampaignCode(detailModel.getCampaignCode());
+                        log.debug("Updated campaign DTO with ID: {} with name: {} and code: {}", 
+                                campaignDto.getCampaignId(), detailModel.getCampaignName(), detailModel.getCampaignCode());
+                    } else {
+                        log.warn("No details found for campaign ID: {} in return transaction ID: {}", campaignDto.getCampaignId(), returnTransaction.getId());
+                    }
+                });
+            } else {
+                log.warn("No campaign DTOs found for return transaction ID: {}", returnTransaction.getId());
+            }
+        } else {
+            log.info("No campaign IDs found for return transaction ID: {}. Skipping campaign details fetch.", returnTransaction.getId());
+            orderLoyalty.setCampaignList(Collections.emptyList()); // Ensure empty list is set
+        }
+
+    } catch (Exception e) {
+        log.error("Error populating campaign details for return transaction ID: {}: {}", returnTransaction.getId(), e.getMessage(), e);
+        throw new RuntimeException("Error populating campaign details for return transaction ID: " + returnTransaction.getId(), e);
+    }
+}
