@@ -106,3 +106,24 @@ void populateCampaignDetails(TransactionModel returnTransaction, OrderTransactio
         throw new RuntimeException("Error populating campaign details for return transaction ID: " + returnTransaction.getId(), e);
     }
 }
+==========================
+Request for Project Alignment to My Skillset
+
+Hi Manoj,
+
+I hope you are doing well.
+
+I am reaching out to inquire if there are any ongoing or upcoming projects aligned with my skills and experience. Below are the highlights of my profile:
+
+Total Experience: 7 years
+
+Core Skills: Java, Spring Boot, Spring Cloud, Microservices Architecture
+
+Cloud & DevOps: Azure Service Bus, Azure Key Vault, Azure Blob Storage, Azure Kubernetes Service (AKS), CI/CD pipelines (Azure DevOps)
+
+I have attached my resume for your detailed reference. Kindly let me know if there is any project where my expertise can be effectively utilized.
+
+Thank you very much for your consideration.
+
+Best regards,
+Mohammad Nadeem
